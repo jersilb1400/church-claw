@@ -1,0 +1,41 @@
+provider_strategy:
+  mode: native_or_gateway
+  default_provider: anthropic
+  fallback_provider: openai
+
+providers:
+  anthropic:
+    enabled: true
+    api_key_env: ANTHROPIC_API_KEY
+    models:
+      primary: claude-sonnet-4-5
+      fast: claude-3-5-haiku-latest
+  openai:
+    enabled: true
+    api_key_env: OPENAI_API_KEY
+    models:
+      primary: gpt-4o
+      fast: gpt-4o-mini
+  google:
+    enabled: false
+    api_key_env: GOOGLE_API_KEY
+    models:
+      primary: gemini-2.5-pro
+  openrouter:
+    enabled: false
+    api_key_env: OPENROUTER_API_KEY
+    base_url: https://openrouter.ai/api/v1
+  litellm:
+    enabled: false
+    base_url: http://litellm:4000
+  ollama:
+    enabled: false
+    base_url: http://ollama:11434
+
+agent_model_policy:
+  grace:
+    model_profile: fast
+  sermon_research:
+    model_profile: primary
+  dev_agent:
+    model_profile: primary

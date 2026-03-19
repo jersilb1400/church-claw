@@ -1,0 +1,35 @@
+church:
+  id: gracefm
+  name: Grace Fellowship Ministries
+  location: Winnsboro, TX
+  website: https://gracefm.org
+  timezone: America/Chicago
+
+branding:
+  primary_color: "#1B3A6B"
+  accent_color: "#C8973A"
+  logo_path: assets/churchclaw-logo.png
+
+channels:
+  web_ui: true
+  teams: true
+  slack: true
+  discord: false
+  whatsapp: false
+  imessage: false
+
+defaults:
+  approval_mode: L2
+  ai_policy: multi-provider
+  org_context: |
+    You are serving Grace Fellowship Ministries.
+    Prioritize ministry care, pastoral discretion, and clarity.
+    Escalate sensitive actions for human approval.
+
+integrations:
+  rock_rms: enabled
+  planning_center: enabled
+  m365: enabled
+  monday: enabled
+  cloudflare: enabled
+  youtube: optional

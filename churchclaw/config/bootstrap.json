@@ -1,0 +1,127 @@
+{
+  "church": {
+    "name": "Grace Fellowship Ministries",
+    "create_tenant_if_missing": false,
+    "tenant_timezone": "America/Chicago"
+  },
+  "platform_settings": {
+    "allow_self_create_company": false,
+    "invitation_code_enabled": true
+  },
+  "tenant_quotas": {
+    "default_message_limit": 200,
+    "default_message_period": "monthly",
+    "default_max_agents": 12,
+    "default_agent_ttl_hours": 720,
+    "default_max_llm_calls_per_day": 800,
+    "min_heartbeat_interval_minutes": 30,
+    "default_max_triggers": 40,
+    "min_poll_interval_floor": 2,
+    "max_webhook_rate_ceiling": 20
+  },
+  "system_settings": {
+    "platform": {
+      "public_base_url": "",
+      "agent_max_rounds": 50
+    },
+    "notification_bar": {
+      "enabled": true,
+      "text": "ChurchClaw is live for Grace FM staff."
+    }
+  },
+  "llm_models": [
+    {
+      "label": "Claude Sonnet (Primary)",
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-5",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "enabled": true
+    },
+    {
+      "label": "Claude Haiku (Fast)",
+      "provider": "anthropic",
+      "model": "claude-3-5-haiku-latest",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "enabled": true
+    },
+    {
+      "label": "OpenAI GPT-4o (Fallback)",
+      "provider": "openai",
+      "model": "gpt-4o",
+      "api_key_env": "OPENAI_API_KEY",
+      "enabled": true
+    },
+    {
+      "label": "OpenRouter Multi-Model",
+      "provider": "openrouter",
+      "model": "anthropic/claude-3.5-sonnet",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "enabled": false
+    },
+    {
+      "label": "LiteLLM Gateway",
+      "provider": "custom",
+      "model": "gpt-4o-mini",
+      "base_url": "http://litellm:4000/v1",
+      "api_key_env": "LITELLM_MASTER_KEY",
+      "enabled": false
+    },
+    {
+      "label": "Ollama Local",
+      "provider": "ollama",
+      "model": "llama3.1:8b",
+      "base_url": "http://ollama:11434/v1",
+      "api_key": "ollama-local",
+      "enabled": false
+    }
+  ],
+  "agents": [
+    {
+      "name": "Grace",
+      "role_description": "Congregational Care Agent for follow-ups, prayer requests, and care summaries.",
+      "personality": "Compassionate, discreet, and proactive.",
+      "boundaries": "Never disclose sensitive pastoral details without explicit authorization.",
+      "primary_model_label": "Claude Sonnet (Primary)",
+      "fallback_model_label": "Claude Haiku (Fast)",
+      "permission_scope_type": "company"
+    },
+    {
+      "name": "Danielle",
+      "role_description": "Communications Agent for bulletins, newsletters, and social drafts.",
+      "personality": "Clear, brand-consistent, and practical.",
+      "boundaries": "Do not publish external communications without human approval.",
+      "primary_model_label": "Claude Sonnet (Primary)",
+      "fallback_model_label": "OpenAI GPT-4o (Fallback)",
+      "permission_scope_type": "company"
+    },
+    {
+      "name": "Worship Planner",
+      "role_description": "Worship planning support with Planning Center alignment and schedule coordination.",
+      "personality": "Organized, reliable, and team-oriented.",
+      "boundaries": "Escalate sensitive scheduling conflicts to worship leadership.",
+      "primary_model_label": "Claude Sonnet (Primary)",
+      "fallback_model_label": "Claude Haiku (Fast)",
+      "permission_scope_type": "company"
+    },
+    {
+      "name": "Dev Agent",
+      "role_description": "ChurchClaw development and operations assistant for upgrades and integrations.",
+      "personality": "Methodical, cautious, and test-first.",
+      "boundaries": "Never expose secrets; require approval for production-impacting changes.",
+      "primary_model_label": "Claude Sonnet (Primary)",
+      "fallback_model_label": "OpenAI GPT-4o (Fallback)",
+      "permission_scope_type": "company",
+      "teams_channel": {
+        "enabled": false,
+        "app_id_env": "M365_CLIENT_ID",
+        "app_secret_env": "M365_CLIENT_SECRET",
+        "tenant_id_env": "M365_TENANT_ID"
+      }
+    }
+  ],
+  "staff_invitation_codes": {
+    "count": 12,
+    "max_uses": 1
+  }
+}
