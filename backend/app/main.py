@@ -9,7 +9,7 @@ from loguru import logger
 from app.config import get_settings
 from app.core.events import close_redis
 from app.core.logging_config import configure_logging, intercept_standard_logging
-from app.core.middleware import TraceIdMiddleware
+from app.core.middleware import TraceIdMiddleware, SecurityHeadersMiddleware
 from app.schemas.schemas import HealthResponse
 
 settings = get_settings()
@@ -97,6 +97,7 @@ async def lifespan(app: FastAPI):
         import app.models.trigger        # noqa
         import app.models.notification   # noqa
         import app.models.gateway_message # noqa
+        import app.models.auth_session   # noqa
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             # Add 'atlassian' to channel_type_enum if it doesn't exist yet (idempotent)
@@ -233,6 +234,7 @@ app = FastAPI(
 
 # Add TraceIdMiddleware first so it's executed for all requests
 app.add_middleware(TraceIdMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS
 _cors_origins = settings.CORS_ORIGINS

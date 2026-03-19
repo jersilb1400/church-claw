@@ -34,8 +34,15 @@ async def get_inbox(
     Returns recent messages from ChatSessions with source_channel='agent'
     where the user's agents are participants.
     """
-    # Find agents the current user created
-    agent_ids_q = await db.execute(select(Agent.id).where(Agent.creator_id == current_user.id))
+    # Strict tenant isolation: non-platform users are always scoped to their tenant.
+    if current_user.role != "platform_admin" and not current_user.tenant_id:
+        return []
+
+    # Find agents the current user created (tenant-scoped).
+    agent_query = select(Agent.id).where(Agent.creator_id == current_user.id)
+    if current_user.role != "platform_admin":
+        agent_query = agent_query.where(Agent.tenant_id == current_user.tenant_id)
+    agent_ids_q = await db.execute(agent_query)
     my_agent_ids = [r[0] for r in agent_ids_q.fetchall()]
 
     if not my_agent_ids:
@@ -88,7 +95,13 @@ async def get_unread_count(
     db: AsyncSession = Depends(get_db),
 ):
     """Get count of unread agent-to-agent messages for the current user's agents."""
-    agent_ids_q = await db.execute(select(Agent.id).where(Agent.creator_id == current_user.id))
+    if current_user.role != "platform_admin" and not current_user.tenant_id:
+        return {"unread_count": 0}
+
+    agent_query = select(Agent.id).where(Agent.creator_id == current_user.id)
+    if current_user.role != "platform_admin":
+        agent_query = agent_query.where(Agent.tenant_id == current_user.tenant_id)
+    agent_ids_q = await db.execute(agent_query)
     my_agent_ids = [r[0] for r in agent_ids_q.fetchall()]
 
     if not my_agent_ids:

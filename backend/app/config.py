@@ -61,7 +61,15 @@ class Settings(BaseSettings):
     # JWT
     JWT_SECRET_KEY: str = "change-me-jwt-secret"
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # 1 hour
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 14
+
+    # Auth cookies (for browser sessions)
+    AUTH_COOKIE_ENABLED: bool = True
+    AUTH_COOKIE_SECURE: bool = False
+    AUTH_COOKIE_SAMESITE: str = "lax"  # lax | strict | none
+    AUTH_ACCESS_COOKIE_NAME: str = "churchclaw_access_token"
+    AUTH_REFRESH_COOKIE_NAME: str = "churchclaw_refresh_token"
 
     # File Storage
     AGENT_DATA_DIR: str = _default_agent_data_dir()
@@ -78,7 +86,7 @@ class Settings(BaseSettings):
     FEISHU_REDIRECT_URI: str = ""
 
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3008", "http://127.0.0.1:3008"]
 
     # Jina AI (Reader + Search APIs)
     JINA_API_KEY: str = ""

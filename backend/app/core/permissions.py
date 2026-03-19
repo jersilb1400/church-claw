@@ -31,6 +31,14 @@ async def check_agent_access(db: AsyncSession, user: User, agent_id: uuid.UUID) 
     if user.role == "platform_admin":
         return agent, "manage"
 
+    # Strict tenant isolation:
+    # non-platform users can never cross tenant boundaries.
+    if agent.tenant_id != user.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cross-tenant access denied",
+        )
+
     # Creator always has manage access
     if agent.creator_id == user.id:
         return agent, "manage"

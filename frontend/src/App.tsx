@@ -18,7 +18,7 @@ import AdminCompanies from './pages/AdminCompanies';
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const token = useAuthStore((s) => s.token);
     const user = useAuthStore((s) => s.user);
-    if (!token) return <Navigate to="/login" replace />;
+    if (!token && !user) return <Navigate to="/login" replace />;
     // Force company setup for users without a tenant
     if (user && !user.tenant_id) return <Navigate to="/setup-company" replace />;
     return <>{children}</>;
@@ -72,7 +72,7 @@ function NotificationBar() {
 }
 
 export default function App() {
-    const { token, setAuth, user } = useAuthStore();
+    const { token, setAuth, setUser } = useAuthStore();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -80,14 +80,16 @@ export default function App() {
         const savedTheme = localStorage.getItem('theme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
 
-        if (token && !user) {
-            authApi.me()
-                .then((u) => setAuth(u, token))
-                .catch(() => useAuthStore.getState().logout())
-                .finally(() => setLoading(false));
-        } else {
-            setLoading(false);
-        }
+        authApi.me()
+            .then((u) => {
+                if (token) {
+                    setAuth(u, token);
+                } else {
+                    setUser(u);
+                }
+            })
+            .catch(() => useAuthStore.getState().logout())
+            .finally(() => setLoading(false));
     }, []);
 
 

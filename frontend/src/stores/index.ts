@@ -6,7 +6,7 @@ import type { User, Agent } from '../types';
 interface AuthStore {
     user: User | null;
     token: string | null;
-    setAuth: (user: User, token: string) => void;
+    setAuth: (user: User, token?: string | null) => void;
     setUser: (user: User) => void;
     logout: () => void;
     isAuthenticated: () => boolean;
@@ -17,8 +17,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     token: localStorage.getItem('token'),
 
     setAuth: (user, token) => {
-        localStorage.setItem('token', token);
-        set({ user, token });
+        if (token) {
+            localStorage.setItem('token', token);
+        }
+        set({ user, token: token ?? get().token });
     },
 
     setUser: (user) => {
@@ -30,7 +32,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         set({ user: null, token: null });
     },
 
-    isAuthenticated: () => !!get().token,
+    isAuthenticated: () => !!get().token || !!get().user,
 }));
 
 interface AppStore {

@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 
 import aiofiles
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
@@ -108,6 +108,7 @@ async def read_file(
 async def download_file(
     agent_id: uuid.UUID,
     path: str,
+    request: Request,
     token: str = "",
     credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False)),
     db: AsyncSession = Depends(get_db),
@@ -125,6 +126,8 @@ async def download_file(
     elif token:
         jwt_token = token
 
+    if not jwt_token:
+        jwt_token = request.cookies.get(settings.AUTH_ACCESS_COOKIE_NAME)
     if not jwt_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
 

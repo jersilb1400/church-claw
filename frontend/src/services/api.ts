@@ -4,18 +4,45 @@ import type { Agent, TokenResponse, User, Task, ChatMessage } from '../types';
 
 const API_BASE = '/api';
 
-async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
+async function tryRefreshSession(): Promise<boolean> {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+    });
+    if (!res.ok) return false;
+    const data = await res.json().catch(() => null);
+    if (data?.access_token) {
+        localStorage.setItem('token', data.access_token);
+    }
+    if (data?.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+    }
+    return true;
+}
+
+async function request<T>(url: string, options: RequestInit = {}, hasRetried = false): Promise<T> {
     const token = localStorage.getItem('token');
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    const res = await fetch(`${API_BASE}${url}`, { ...options, headers });
+    const res = await fetch(`${API_BASE}${url}`, { ...options, headers, credentials: 'include' });
 
     if (!res.ok) {
         // Auto-logout on expired/invalid token (but not on auth endpoints — let them show errors)
-        const isAuthEndpoint = url.startsWith('/auth/login') || url.startsWith('/auth/register');
+        const isAuthEndpoint =
+            url.startsWith('/auth/login') ||
+            url.startsWith('/auth/register') ||
+            url.startsWith('/auth/refresh') ||
+            url.startsWith('/auth/logout');
+        if (res.status === 401 && !isAuthEndpoint && !hasRetried) {
+            const refreshed = await tryRefreshSession();
+            if (refreshed) {
+                return request<T>(url, options, true);
+            }
+        }
         if (res.status === 401 && !isAuthEndpoint) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -63,6 +90,7 @@ async function uploadFile(url: string, file: File, extraFields?: Record<string, 
     const res = await fetch(`${API_BASE}${url}`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
         body: formData,
     });
     if (!res.ok) {
@@ -94,6 +122,7 @@ export function uploadFileWithProgress(
         }
         xhr.open('POST', `${API_BASE}${url}`);
         if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.withCredentials = true;
 
         // Upload phase: 0-100%
         xhr.upload.onprogress = (e) => {
