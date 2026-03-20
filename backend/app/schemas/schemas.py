@@ -22,8 +22,8 @@ class UserLogin(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+    access_token: str | None = None  # Omitted when AUTH_EXPOSE_ACCESS_TOKEN_IN_BODY is False
+    token_type: str | None = "bearer"
     user: "UserOut"
     needs_company_setup: bool = False
 

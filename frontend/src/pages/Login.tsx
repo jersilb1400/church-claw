@@ -5,9 +5,9 @@ import { useAuthStore } from '../stores';
 import { authApi } from '../services/api';
 
 export default function Login() {
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
     const navigate = useNavigate();
-    const setAuth = useAuthStore((s) => s.setAuth);
+    const setUser = useAuthStore((s) => s.setUser);
     const [isRegister, setIsRegister] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -22,10 +22,6 @@ export default function Login() {
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', 'dark');
     }, []);
-
-    const toggleLang = () => {
-        i18n.changeLanguage(i18n.language === 'zh' ? 'en' : 'zh');
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -42,7 +38,7 @@ export default function Login() {
             } else {
                 res = await authApi.login({ username: form.username, password: form.password });
             }
-            setAuth(res.user, res.access_token);
+            setUser(res.user);
             // Redirect to company setup if user has no company assigned
             if (res.needs_company_setup) {
                 navigate('/setup-company');
@@ -119,18 +115,6 @@ export default function Login() {
 
             {/* ── Right: Form Panel ── */}
             <div className="login-form-panel">
-                {/* Language Switcher */}
-                <div style={{
-                    position: 'absolute', top: '16px', right: '16px',
-                    cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)',
-                    display: 'flex', alignItems: 'center', gap: '4px',
-                    padding: '6px 12px', borderRadius: '8px',
-                    background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)',
-                    zIndex: 101,
-                }} onClick={toggleLang}>
-                    🌐
-                </div>
-
                 <div className="login-form-wrapper">
                     <div className="login-form-header">
                         <div className="login-form-logo"><img src="/logo-black.png" className="login-logo-img" alt="" style={{ width: 28, height: 28, marginRight: 8, verticalAlign: 'middle' }} />ChurchClaw</div>

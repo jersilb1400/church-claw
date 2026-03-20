@@ -1,0 +1,20 @@
+# Local LLM only — add Ollama to the install stack (no LiteLLM, no cloud keys required).
+#
+#   docker compose -f docker-compose.install.yml -f docker-compose.ollama.yml --env-file .env up -d
+#
+# Then pull a model inside the container:
+#   docker compose -f docker-compose.install.yml -f docker-compose.ollama.yml exec ollama ollama pull llama3.1:8b
+#
+# Backend reaches Ollama at http://ollama:11434/v1 (same Docker network).
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:

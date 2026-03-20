@@ -1,0 +1,10 @@
+# Optional override: allow backend to start OpenClaw-style containers on the host.
+#
+#   docker compose -f docker-compose.install.yml -f docker-compose.host-docker.yml up -d
+#
+# Requires Docker Desktop / Linux Docker on the same machine.
+
+services:
+  backend:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

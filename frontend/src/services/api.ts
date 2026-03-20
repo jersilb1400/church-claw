@@ -1,6 +1,7 @@
 /** API service layer */
 
 import type { Agent, TokenResponse, User, Task, ChatMessage } from '../types';
+import { useAuthStore } from '../stores';
 
 const API_BASE = '/api';
 
@@ -12,20 +13,16 @@ async function tryRefreshSession(): Promise<boolean> {
     });
     if (!res.ok) return false;
     const data = await res.json().catch(() => null);
-    if (data?.access_token) {
-        localStorage.setItem('token', data.access_token);
-    }
     if (data?.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
+        useAuthStore.getState().setUser(data.user);
     }
     return true;
 }
 
 async function request<T>(url: string, options: RequestInit = {}, hasRetried = false): Promise<T> {
-    const token = localStorage.getItem('token');
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers as Record<string, string> | undefined),
     };
 
     const res = await fetch(`${API_BASE}${url}`, { ...options, headers, credentials: 'include' });
@@ -46,18 +43,19 @@ async function request<T>(url: string, options: RequestInit = {}, hasRetried = f
         if (res.status === 401 && !isAuthEndpoint) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
+            useAuthStore.getState().setUser(null);
             window.location.href = '/login';
             throw new Error('Session expired');
         }
         const error = await res.json().catch(() => ({ detail: 'Request failed' }));
         // Pydantic validation errors return detail as an array of objects
         const fieldLabels: Record<string, string> = {
-            name: '名称',
-            role_description: '角色描述',
-            agent_type: '智能体类型',
-            primary_model_id: '主模型',
-            max_tokens_per_day: '每日 Token 上限',
-            max_tokens_per_month: '每月 Token 上限',
+            name: 'Name',
+            role_description: 'Role description',
+            agent_type: 'Agent type',
+            primary_model_id: 'Primary model',
+            max_tokens_per_day: 'Max tokens per day',
+            max_tokens_per_month: 'Max tokens per month',
         };
         let message = '';
         if (Array.isArray(error.detail)) {
@@ -79,7 +77,6 @@ async function request<T>(url: string, options: RequestInit = {}, hasRetried = f
 }
 
 async function uploadFile(url: string, file: File, extraFields?: Record<string, string>): Promise<any> {
-    const token = localStorage.getItem('token');
     const formData = new FormData();
     formData.append('file', file);
     if (extraFields) {
@@ -89,7 +86,6 @@ async function uploadFile(url: string, file: File, extraFields?: Record<string, 
     }
     const res = await fetch(`${API_BASE}${url}`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
         credentials: 'include',
         body: formData,
     });
@@ -112,7 +108,6 @@ export function uploadFileWithProgress(
 ): { promise: Promise<any>; abort: () => void } {
     const xhr = new XMLHttpRequest();
     const promise = new Promise<any>((resolve, reject) => {
-        const token = localStorage.getItem('token');
         const formData = new FormData();
         formData.append('file', file);
         if (extraFields) {
@@ -121,7 +116,6 @@ export function uploadFileWithProgress(
             }
         }
         xhr.open('POST', `${API_BASE}${url}`);
-        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         xhr.withCredentials = true;
 
         // Upload phase: 0-100%
@@ -161,6 +155,8 @@ export const authApi = {
 
     login: (data: { username: string; password: string }) =>
         request<TokenResponse>('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+
+    logout: () => request<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
 
     me: () => request<User>('/auth/me'),
 
@@ -287,10 +283,9 @@ export const fileApi = {
             body: JSON.stringify({ skill_id: skillId }),
         }),
 
-    downloadUrl: (agentId: string, path: string) => {
-        const token = localStorage.getItem('token');
-        return `${API_BASE}/agents/${agentId}/files/download?path=${encodeURIComponent(path)}&token=${token}`;
-    },
+    /** Same-origin only; browser sends HttpOnly cookie (no token in URL). */
+    downloadUrl: (agentId: string, path: string) =>
+        `${API_BASE}/agents/${agentId}/files/download?path=${encodeURIComponent(path)}`,
 };
 
 // ─── Channel Config ───────────────────────────────────

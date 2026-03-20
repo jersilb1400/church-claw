@@ -13,9 +13,7 @@ export default function InvitationCodes() {
     const [creating, setCreating] = useState(false);
     const [toast, setToast] = useState('');
 
-    const token = localStorage.getItem('token');
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const loadCodes = useCallback(async (p?: number, q?: string) => {
         const currentPage = p ?? page;
@@ -25,7 +23,7 @@ export default function InvitationCodes() {
             page_size: String(pageSize),
         });
         if (currentSearch) params.set('search', currentSearch);
-        const res = await fetch(`/api/enterprise/invitation-codes?${params}`, { headers });
+        const res = await fetch(`/api/enterprise/invitation-codes?${params}`, { headers, credentials: 'include' });
         const data = await res.json();
         setCodes(data.items || []);
         setTotal(data.total || 0);
@@ -43,7 +41,7 @@ export default function InvitationCodes() {
     const createBatch = async () => {
         setCreating(true);
         await fetch('/api/enterprise/invitation-codes', {
-            method: 'POST', headers, body: JSON.stringify({ count: batchCount, max_uses: maxUses }),
+            method: 'POST', headers, credentials: 'include', body: JSON.stringify({ count: batchCount, max_uses: maxUses }),
         });
         setPage(1);
         setSearch('');
@@ -54,15 +52,14 @@ export default function InvitationCodes() {
     };
 
     const deactivate = async (id: string) => {
-        await fetch(`/api/enterprise/invitation-codes/${id}`, { method: 'DELETE', headers });
+        await fetch(`/api/enterprise/invitation-codes/${id}`, { method: 'DELETE', headers, credentials: 'include' });
         await loadCodes();
     };
 
     const exportCsv = () => {
-        const token = localStorage.getItem('token');
         const a = document.createElement('a');
         fetch('/api/enterprise/invitation-codes/export', {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            credentials: 'include',
         })
             .then(r => r.blob())
             .then(blob => {

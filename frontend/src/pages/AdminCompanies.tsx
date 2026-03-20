@@ -84,9 +84,9 @@ export default function AdminCompanies() {
 
     const loadNotificationBar = async () => {
         try {
-            const token = localStorage.getItem('token');
             const res = await fetch('/api/enterprise/system-settings/notification_bar', {
-                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
             });
             const d = await res.json();
             if (d?.value) {
@@ -99,10 +99,10 @@ export default function AdminCompanies() {
     const saveNotificationBar = async () => {
         setNbSaving(true);
         try {
-            const token = localStorage.getItem('token');
             await fetch('/api/enterprise/system-settings/notification_bar', {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ value: { enabled: nbEnabled, text: nbText } }),
             });
             setNbSaved(true);

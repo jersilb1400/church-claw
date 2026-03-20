@@ -72,17 +72,16 @@ const Icons = {
 /* ────── Helpers ────── */
 
 const fetchJson = async <T,>(url: string): Promise<T> => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const res = await fetch(url, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch');
     return res.json();
 };
 
 const postJson = async (url: string, body: any) => {
-    const token = localStorage.getItem('token');
     const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error('Failed to post');

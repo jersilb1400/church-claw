@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { agentApi, enterpriseApi } from '../services/api';
 import { useAuthStore } from '../stores';
+import { credFetch } from '../utils/credFetch';
 
 /* ── Inline SVG Icons ── */
 const Icons = {
@@ -64,7 +65,7 @@ interface Message {
 export default function Chat() {
     const { t } = useTranslation();
     const { id } = useParams<{ id: string }>();
-    const token = useAuthStore((s) => s.token);
+    const user = useAuthStore((s) => s.user);
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [connected, setConnected] = useState(false);
@@ -118,10 +119,8 @@ export default function Chat() {
 
     // Load chat history on mount
     useEffect(() => {
-        if (!id || !token) return;
-        fetch(`/api/chat/${id}/history`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
+        if (!id || !user) return;
+        credFetch(`/api/chat/${id}/history`, {})
             .then(r => r.json())
             .then((history: any[]) => {
                 if (history.length > 0) setMessages(history.map(h => {
@@ -131,17 +130,17 @@ export default function Chat() {
                 }));
             })
             .catch(() => { /* ignore */ });
-    }, [id, token]);
+    }, [id, user]);
 
     useEffect(() => {
-        if (!id || !token) return;
+        if (!id || !user) return;
 
         let cancelled = false;
 
         const connect = () => {
             if (cancelled) return;
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws/chat/${id}?token=${token}`;
+            const wsUrl = `${protocol}//${window.location.host}/ws/chat/${id}`;
             const ws = new WebSocket(wsUrl);
 
             ws.onopen = () => {
@@ -233,7 +232,7 @@ export default function Chat() {
                 wsRef.current = null;
             }
         };
-    }, [id, token]);
+    }, [id, user]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -249,9 +248,8 @@ export default function Chat() {
             formData.append('file', file);
             if (id) formData.append('agent_id', id);
 
-            const resp = await fetch('/api/chat/upload', {
+            const resp = await credFetch('/api/chat/upload', {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${token}` },
                 body: formData,
             });
 
@@ -291,23 +289,23 @@ export default function Chat() {
                 const imageMarker = `[image_data:${attachedFile.imageUrl}]`;
                 contentForLLM = userMsg
                     ? `${imageMarker}\n${userMsg}`
-                    : `${imageMarker}\n请分析这张图片`;
-                userMsg = userMsg || `[图片] ${attachedFile.name}`;
+                    : `${imageMarker}\nPlease analyze this image.`;
+                userMsg = userMsg || `[Image] ${attachedFile.name}`;
             } else if (attachedFile.imageUrl) {
                 // Non-vision model — just reference the file path
                 const wsPath = attachedFile.path || '';
                 contentForLLM = userMsg
-                    ? `[图片文件已上传: ${attachedFile.name}，保存在 ${wsPath}]\n\n${userMsg}`
-                    : `[图片文件已上传: ${attachedFile.name}，保存在 ${wsPath}]\n请描述或处理这个图片文件。你可以使用 read_document 工具读取它。`;
-                userMsg = userMsg || `[图片] ${attachedFile.name}`;
+                    ? `[Image uploaded: ${attachedFile.name}, saved at ${wsPath}]\n\n${userMsg}`
+                    : `[Image uploaded: ${attachedFile.name}, saved at ${wsPath}]\nDescribe or process this image. You can use the read_document tool to read it.`;
+                userMsg = userMsg || `[Image] ${attachedFile.name}`;
             } else {
                 const wsPath = attachedFile.path || '';
                 const codePath = wsPath.replace(/^workspace\//, '');
                 const fileLoc = wsPath ? `\nFile location: ${wsPath} (for read_file/read_document tools)\nIn execute_code, use relative path: "${codePath}" (working directory is workspace/)` : '';
-                const fileContext = `[文件: ${attachedFile.name}]${fileLoc}\n\n${attachedFile.text}`;
+                const fileContext = `[File: ${attachedFile.name}]${fileLoc}\n\n${attachedFile.text}`;
                 contentForLLM = userMsg
-                    ? `${fileContext}\n\n用户问题: ${userMsg}`
-                    : `请阅读并分析以下文件内容:\n\n${fileContext}`;
+                    ? `${fileContext}\n\nUser question: ${userMsg}`
+                    : `Please read and analyze the following file content:\n\n${fileContext}`;
                 userMsg = userMsg || `[${t('agent.chat.attachment')}] ${attachedFile.name}`;
             }
         }

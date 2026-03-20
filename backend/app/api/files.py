@@ -266,7 +266,7 @@ async def upload_file_to_workspace(
 
     # Validate path prefix
     if not path.startswith(("workspace/", "skills/")):
-        raise HTTPException(status_code=400, detail="只能上传到 workspace/ 或 skills/ 目录")
+        raise HTTPException(status_code=400, detail="Uploads are only allowed under workspace/ or skills/")
 
     base = _agent_base_dir(agent_id)
     target_dir = (base / path).resolve()
@@ -412,7 +412,7 @@ async def read_enterprise_file(
         content = target.read_text(encoding="utf-8", errors="replace")
         return {"path": path, "content": content}
     except Exception:
-        return {"path": path, "content": f"[二进制文件: {target.name}, {target.stat().st_size} bytes]"}
+        return {"path": path, "content": f"[Binary file: {target.name}, {target.stat().st_size} bytes]"}
 
 
 @enterprise_kb_router.put("/content")

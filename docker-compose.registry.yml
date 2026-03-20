@@ -1,0 +1,90 @@
+# Pre-built images only — no source build. For users who download compose from a release.
+#
+# 1. Publish images (maintainers): push tags to ghcr.io — see .github/workflows/docker-publish.yml
+# 2. Set in `.env`:
+#      BACKEND_IMAGE=ghcr.io/OWNER/churchclaw-backend:v1.0.0
+#      FRONTEND_IMAGE=ghcr.io/OWNER/churchclaw-frontend:v1.0.0
+# 3. Run:
+#      docker compose -f docker-compose.registry.yml pull
+#      docker compose -f docker-compose.registry.yml up -d
+#
+# Same services as docker-compose.install.yml but `build:` is omitted.
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-clawith}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-clawith}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-clawith}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE in .env (e.g. ghcr.io/org/churchclaw-backend:tag)}
+    restart: unless-stopped
+    command: ["/bin/bash", "/app/entrypoint.sh"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-clawith}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-clawith}
+      REDIS_URL: redis://redis:6379/0
+      AGENT_DATA_DIR: /data/agents
+      AGENT_TEMPLATE_DIR: /app/agent_template
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-14}
+      CORS_ORIGINS: ${CORS_ORIGINS:-'["http://localhost:8080","http://127.0.0.1:8080"]'}
+      AUTH_COOKIE_ENABLED: ${AUTH_COOKIE_ENABLED:-true}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-lax}
+      AUTH_EXPOSE_ACCESS_TOKEN_IN_BODY: ${AUTH_EXPOSE_ACCESS_TOKEN_IN_BODY:-false}
+      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
+      DOCKER_NETWORK: ${DOCKER_NETWORK:-churchclaw_network}
+      SS_CONFIG_FILE: ${SS_CONFIG_FILE:-/data/ss-nodes.json}
+    volumes:
+      - agent_data:/data/agents
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?Set FRONTEND_IMAGE in .env}
+    ports:
+      - "${CHURCHCLAW_PORT:-8080}:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  agent_data:
+
+networks:
+  default:
+    name: ${DOCKER_NETWORK:-churchclaw_network}

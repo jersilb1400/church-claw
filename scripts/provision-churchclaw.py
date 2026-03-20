@@ -13,10 +13,11 @@ This script configures:
 from __future__ import annotations
 
 import argparse
+import http.cookiejar
 import json
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 from urllib import error, request
@@ -26,6 +27,10 @@ from urllib import error, request
 class ApiClient:
     base_url: str
     token: str | None = None
+    cookie_jar: http.cookiejar.CookieJar = field(default_factory=http.cookiejar.CookieJar)
+
+    def __post_init__(self) -> None:
+        self._opener = request.build_opener(request.HTTPCookieProcessor(self.cookie_jar))
 
     def _url(self, path: str) -> str:
         return f"{self.base_url.rstrip('/')}{path}"
@@ -47,7 +52,7 @@ class ApiClient:
             method=method.upper(),
         )
         try:
-            with request.urlopen(req, timeout=30) as resp:
+            with self._opener.open(req, timeout=30) as resp:
                 raw = resp.read()
                 if not raw:
                     return None
@@ -88,9 +93,12 @@ def resolve_secret(model_cfg: dict[str, Any]) -> str | None:
 def login(client: ApiClient, username: str, password: str) -> dict[str, Any]:
     result = client.post("/api/auth/login", {"username": username, "password": password})
     token = result.get("access_token")
-    if not token:
-        raise RuntimeError("Login response did not include access_token.")
-    client.token = token
+    client.token = token if token else None
+    if not token and len(client.cookie_jar) == 0:
+        raise RuntimeError(
+            "Login did not return access_token and no cookies were stored. "
+            "Set AUTH_COOKIE_ENABLED=true on the backend or AUTH_EXPOSE_ACCESS_TOKEN_IN_BODY=true for Bearer-only clients."
+        )
     return result
 
 

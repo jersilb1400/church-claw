@@ -25,10 +25,11 @@ interface UserInfo {
 const API_PREFIX = '/api';
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-    const token = localStorage.getItem('token');
+    const { headers: optHeaders, ...rest } = options || {};
     const res = await fetch(`${API_PREFIX}${url}`, {
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        ...options,
+        credentials: 'include',
+        ...rest,
+        headers: { 'Content-Type': 'application/json', ...(optHeaders as Record<string, string>) },
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
@@ -44,8 +45,7 @@ const PERIOD_OPTIONS = [
 const PAGE_SIZE = 15;
 
 export default function UserManagement() {
-    const { t, i18n } = useTranslation();
-    const isChinese = i18n.language?.startsWith('zh');
+    const { t } = useTranslation();
 
     const [users, setUsers] = useState<UserInfo[]>([]);
     const [loading, setLoading] = useState(true);
@@ -96,7 +96,7 @@ export default function UserManagement() {
                 method: 'PATCH',
                 body: JSON.stringify(editForm),
             });
-            setToast(isChinese ? '✅ 配额已更新' : '✅ Quota updated');
+            setToast('✅ Quota updated');
             setTimeout(() => setToast(''), 2000);
             setEditingUserId(null);
             loadUsers();
@@ -107,18 +107,12 @@ export default function UserManagement() {
         setSaving(false);
     };
 
-    const periodLabel = (period: string) => {
-        if (isChinese) {
-            const map: Record<string, string> = { permanent: '永久', daily: '每天', weekly: '每周', monthly: '每月' };
-            return map[period] || period;
-        }
-        return PERIOD_OPTIONS.find(p => p.value === period)?.label || period;
-    };
+    const periodLabel = (period: string) => PERIOD_OPTIONS.find(p => p.value === period)?.label || period;
 
     const formatDate = (iso?: string) => {
         if (!iso) return '-';
         const d = new Date(iso);
-        return d.toLocaleString(isChinese ? 'zh-CN' : 'en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+        return d.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
     };
 
     // Search filter
@@ -170,7 +164,7 @@ export default function UserManagement() {
                         <input
                             className="form-input"
                             type="text"
-                            placeholder={isChinese ? '搜索用户名、显示名或邮箱…' : 'Search username, name or email…'}
+                            placeholder="Search username, name or email…"
                             value={searchQuery}
                             onChange={e => { setSearchQuery(e.target.value); setPage(1); }}
                             style={{
@@ -182,7 +176,7 @@ export default function UserManagement() {
                         />
                         {searchQuery && (
                             <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginLeft: '12px' }}>
-                                {isChinese ? `${filtered.length} / ${users.length} 位用户` : `${filtered.length} / ${users.length} users`}
+                                {`${filtered.length} / ${users.length} users`}
                             </span>
                         )}
                     </div>
@@ -193,20 +187,20 @@ export default function UserManagement() {
                         gap: '10px', padding: '10px 16px', fontSize: '11px', fontWeight: 600,
                         color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em',
                     }}>
-                        <div>{t('enterprise.users.user', isChinese ? '用户' : 'User')}</div>
+                        <div>{t('enterprise.users.user', 'User')}</div>
                         <div>{t('enterprise.users.email', 'Email')}</div>
                         {/* Created At with sort toggle */}
                         <div
                             style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}
                             onClick={toggleSort}
-                            title={isChinese ? '点击切换排序' : 'Click to toggle sort order'}
+                            title="Click to toggle sort order"
                         >
-                            {isChinese ? '注册时间' : 'Joined'} {sortOrder === 'asc' ? '↑' : '↓'}
+                            Joined {sortOrder === 'asc' ? '↑' : '↓'}
                         </div>
-                        <div>{isChinese ? '来源' : 'Source'}</div>
-                        <div>{t('enterprise.users.msgQuota', isChinese ? '消息配额' : 'Msg Quota')}</div>
-                        <div>{t('enterprise.users.period', isChinese ? '周期' : 'Period')}</div>
-                        <div>{t('enterprise.users.agents', isChinese ? '数字员工' : 'Agents')}</div>
+                        <div>Source</div>
+                        <div>{t('enterprise.users.msgQuota', 'Msg Quota')}</div>
+                        <div>{t('enterprise.users.period', 'Period')}</div>
+                        <div>{t('enterprise.users.agents', 'Agents')}</div>
                         <div>{t('enterprise.users.ttl', 'TTL')}</div>
                         <div></div>
                     </div>
@@ -231,11 +225,11 @@ export default function UserManagement() {
                                 <div>
                                     {user.source === 'feishu' ? (
                                         <span style={{ fontSize: '10px', background: 'rgba(58,132,255,0.12)', color: '#3a84ff', borderRadius: '4px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
-                                            飞书
+                                            Feishu
                                         </span>
                                     ) : (
                                         <span style={{ fontSize: '10px', background: 'rgba(0,180,120,0.12)', color: 'var(--success)', borderRadius: '4px', padding: '2px 7px', whiteSpace: 'nowrap' }}>
-                                            {isChinese ? '注册' : 'Reg'}
+                                            Reg
                                         </span>
                                     )}
                                 </div>
@@ -272,7 +266,7 @@ export default function UserManagement() {
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
                                         <div className="form-group">
                                             <label className="form-label" style={{ fontSize: '11px' }}>
-                                                {t('enterprise.users.msgLimit', isChinese ? '消息限额' : 'Message Limit')}
+                                                {t('enterprise.users.msgLimit', 'Message Limit')}
                                             </label>
                                             <input
                                                 className="form-input"
@@ -283,7 +277,7 @@ export default function UserManagement() {
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label" style={{ fontSize: '11px' }}>
-                                                {t('enterprise.users.period', isChinese ? '重置周期' : 'Period')}
+                                                {t('enterprise.users.period', 'Period')}
                                             </label>
                                             <select
                                                 className="form-input"
@@ -297,7 +291,7 @@ export default function UserManagement() {
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label" style={{ fontSize: '11px' }}>
-                                                {t('enterprise.users.maxAgents', isChinese ? '最多数字员工' : 'Max Agents')}
+                                                {t('enterprise.users.maxAgents', 'Max Agents')}
                                             </label>
                                             <input
                                                 className="form-input"
@@ -308,7 +302,7 @@ export default function UserManagement() {
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label" style={{ fontSize: '11px' }}>
-                                                {t('enterprise.users.agentTTL', isChinese ? '员工存活时长(h)' : 'Agent TTL (hours)')}
+                                                {t('enterprise.users.agentTTL', 'Agent TTL (hours)')}
                                             </label>
                                             <input
                                                 className="form-input"
@@ -346,7 +340,7 @@ export default function UserManagement() {
                                 disabled={page <= 1}
                                 onClick={() => setPage(p => p - 1)}
                             >
-                                ‹ {isChinese ? '上一页' : 'Prev'}
+                                ‹ Prev
                             </button>
                             {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                                 <button
@@ -364,7 +358,7 @@ export default function UserManagement() {
                                 disabled={page >= totalPages}
                                 onClick={() => setPage(p => p + 1)}
                             >
-                                {isChinese ? '下一页' : 'Next'} ›
+                                Next ›
                             </button>
                         </div>
                     )}

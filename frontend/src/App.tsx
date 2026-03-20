@@ -16,9 +16,8 @@ import InvitationCodes from './pages/InvitationCodes';
 import AdminCompanies from './pages/AdminCompanies';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-    const token = useAuthStore((s) => s.token);
     const user = useAuthStore((s) => s.user);
-    if (!token && !user) return <Navigate to="/login" replace />;
+    if (!user) return <Navigate to="/login" replace />;
     // Force company setup for users without a tenant
     if (user && !user.tenant_id) return <Navigate to="/setup-company" replace />;
     return <>{children}</>;
@@ -72,7 +71,7 @@ function NotificationBar() {
 }
 
 export default function App() {
-    const { token, setAuth, setUser } = useAuthStore();
+    const { setUser } = useAuthStore();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -81,14 +80,8 @@ export default function App() {
         document.documentElement.setAttribute('data-theme', savedTheme);
 
         authApi.me()
-            .then((u) => {
-                if (token) {
-                    setAuth(u, token);
-                } else {
-                    setUser(u);
-                }
-            })
-            .catch(() => useAuthStore.getState().logout())
+            .then((u) => setUser(u))
+            .catch(() => useAuthStore.getState().setUser(null))
             .finally(() => setLoading(false));
     }, []);
 
@@ -96,7 +89,7 @@ export default function App() {
     if (loading) {
         return (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-tertiary)' }}>
-                加载中...
+                Loading…
             </div>
         );
     }

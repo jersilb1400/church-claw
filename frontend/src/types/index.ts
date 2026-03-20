@@ -72,8 +72,9 @@ export interface ChatMessage {
 }
 
 export interface TokenResponse {
-    access_token: string;
-    token_type: string;
+    /** Present only when server sets AUTH_EXPOSE_ACCESS_TOKEN_IN_BODY=true */
+    access_token?: string;
+    token_type?: string;
     user: User;
     needs_company_setup?: boolean;
 }

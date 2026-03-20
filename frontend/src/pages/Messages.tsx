@@ -10,7 +10,7 @@ const ACTION_ICONS: Record<string, string> = {
 };
 
 export default function Messages() {
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
     const { data: messages = [], isLoading } = useQuery({
         queryKey: ['messages-inbox'],
@@ -44,7 +44,7 @@ export default function Messages() {
         if (diffMs < 60000) return t('messages.justNow');
         if (diffMs < 3600000) return t('messages.minutesAgo', { count: Math.floor(diffMs / 60000) });
         if (diffMs < 86400000) return t('messages.hoursAgo', { count: Math.floor(diffMs / 3600000) });
-        return d.toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     };
 
     return (

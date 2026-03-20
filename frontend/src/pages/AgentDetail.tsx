@@ -11,6 +11,7 @@ import MarkdownRenderer from '../components/MarkdownRenderer';
 import PromptModal from '../components/PromptModal';
 import { activityApi, agentApi, channelApi, enterpriseApi, fileApi, scheduleApi, skillApi, taskApi, triggerApi, uploadFileWithProgress } from '../services/api';
 import { useAuthStore } from '../stores';
+import { credFetch } from '../utils/credFetch';
 
 const TABS = ['status', 'aware', 'mind', 'tools', 'skills', 'relationships', 'workspace', 'chat', 'activityLog', 'approvals', 'settings'] as const;
 
@@ -50,14 +51,11 @@ function ToolsManager({ agentId, canManage = false }: { agentId: string; canMana
 
     const loadTools = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`/api/tools/agents/${agentId}/with-config`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await credFetch(`/api/tools/agents/${agentId}/with-config`, {});
             if (res.ok) setTools(await res.json());
             else {
                 // Fallback to old endpoint
-                const res2 = await fetch(`/api/tools/agents/${agentId}`, { headers: { Authorization: `Bearer ${token}` } });
+                const res2 = await credFetch(`/api/tools/agents/${agentId}`, { });
                 if (res2.ok) setTools(await res2.json());
             }
         } catch (e) { console.error(e); }
@@ -69,10 +67,9 @@ function ToolsManager({ agentId, canManage = false }: { agentId: string; canMana
     const toggleTool = async (toolId: string, enabled: boolean) => {
         setTools(prev => prev.map(t => t.id === toolId ? { ...t, enabled } : t));
         try {
-            const token = localStorage.getItem('token');
-            await fetch(`/api/tools/agents/${agentId}`, {
+            await credFetch(`/api/tools/agents/${agentId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify([{ tool_id: toolId, enabled }]),
             });
         } catch (e) { console.error(e); }
@@ -89,12 +86,11 @@ function ToolsManager({ agentId, canManage = false }: { agentId: string; canMana
         if (!configTool) return;
         setConfigSaving(true);
         try {
-            const token = localStorage.getItem('token');
             const hasSchema = configTool.config_schema?.fields?.length > 0;
             const payload = hasSchema ? configData : JSON.parse(configJson || '{}');
-            await fetch(`/api/tools/agents/${agentId}/tool-config/${configTool.id}`, {
+            await credFetch(`/api/tools/agents/${agentId}/tool-config/${configTool.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ config: payload }),
             });
             setConfigTool(null);
@@ -163,10 +159,8 @@ function ToolsManager({ agentId, canManage = false }: { agentId: string; canMana
                                                 if (!confirm(t('agent.tools.confirmDelete', `Remove "${tool.display_name}" from this agent?`))) return;
                                                 setDeletingToolId(tool.id);
                                                 try {
-                                                    const token = localStorage.getItem('token');
-                                                    const res = await fetch(`/api/tools/agent-tool/${tool.agent_tool_id}`, {
+                                                    const res = await credFetch(`/api/tools/agent-tool/${tool.agent_tool_id}`, {
                                                         method: 'DELETE',
-                                                        headers: { Authorization: `Bearer ${token}` },
                                                     });
                                                     if (res.ok) await loadTools();
                                                     else alert('Delete failed');
@@ -334,10 +328,9 @@ function ToolsManager({ agentId, canManage = false }: { agentId: string; canMana
                                                 if (btn) btn.textContent = 'Testing...';
                                                 if (btn) (btn as HTMLButtonElement).disabled = true;
                                                 try {
-                                                    const token = localStorage.getItem('token');
-                                                    const res = await fetch('/api/tools/test-email', {
+                                                    const res = await credFetch('/api/tools/test-email', {
                                                         method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                                        headers: { 'Content-Type': 'application/json' },
                                                         body: JSON.stringify({ config: configData }),
                                                     });
                                                     const data = await res.json();
@@ -378,8 +371,7 @@ function ToolsManager({ agentId, canManage = false }: { agentId: string; canMana
                         <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'flex-end' }}>
                             {Object.keys(configTool.agent_config || {}).length > 0 && (
                                 <button className="btn btn-ghost" style={{ color: 'var(--error)', marginRight: 'auto' }} onClick={async () => {
-                                    const token = localStorage.getItem('token');
-                                    await fetch(`/api/tools/agents/${agentId}/tool-config/${configTool.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ config: {} }) });
+                                    await credFetch(`/api/tools/agents/${agentId}/tool-config/${configTool.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ config: {} }) });
                                     setConfigTool(null); loadTools();
                                 }}>Reset to Global</button>
                             )}
@@ -424,10 +416,9 @@ const getAgentRelationOptions = (t: any) => [
 ];
 
 function fetchAuth<T>(url: string, options?: RequestInit): Promise<T> {
-    const token = localStorage.getItem('token');
-    return fetch(`/api${url}`, {
+    return credFetch(`/api${url}`, {
         ...options,
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json', ...(options?.headers as object) },
     }).then(r => r.json());
 }
 
@@ -672,7 +663,7 @@ function RelationshipEditor({ agentId, readOnly = false }: { agentId: string; re
 }
 
 function AgentDetailInner() {
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -719,8 +710,7 @@ function AgentDetailInner() {
     const { data: reflectionSessions = [] } = useQuery({
         queryKey: ['reflection-sessions', id],
         queryFn: async () => {
-            const tkn = localStorage.getItem('token');
-            const res = await fetch(`/api/agents/${id}/sessions?scope=all`, { headers: { Authorization: `Bearer ${tkn}` } });
+            const res = await credFetch(`/api/agents/${id}/sessions?scope=all`, { });
             if (!res.ok) return [];
             const all = await res.json();
             return all.filter((s: any) => s.source_channel === 'trigger');
@@ -794,8 +784,7 @@ function AgentDetailInner() {
         if (!id) return;
         if (!silent) setSessionsLoading(true);
         try {
-            const tkn = localStorage.getItem('token');
-            const res = await fetch(`/api/agents/${id}/sessions?scope=mine`, { headers: { Authorization: `Bearer ${tkn}` } });
+            const res = await credFetch(`/api/agents/${id}/sessions?scope=mine`, { });
             if (res.ok) { const data = await res.json(); setSessions(data); return data; }
         } catch { }
         if (!silent) setSessionsLoading(false);
@@ -805,8 +794,7 @@ function AgentDetailInner() {
     const fetchAllSessions = async () => {
         if (!id) return;
         try {
-            const tkn = localStorage.getItem('token');
-            const res = await fetch(`/api/agents/${id}/sessions?scope=all`, { headers: { Authorization: `Bearer ${tkn}` } });
+            const res = await credFetch(`/api/agents/${id}/sessions?scope=all`, { });
             if (res.ok) {
                 const all = await res.json();
                 setAllSessions(all.filter((s: any) => s.source_channel !== 'trigger'));
@@ -816,9 +804,8 @@ function AgentDetailInner() {
 
     const createNewSession = async () => {
         try {
-            const tkn = localStorage.getItem('token');
-            const res = await fetch(`/api/agents/${id}/sessions`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tkn}` },
+            const res = await credFetch(`/api/agents/${id}/sessions`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({}),
             });
             if (res.ok) {
@@ -840,9 +827,8 @@ function AgentDetailInner() {
 
     const deleteSession = async (sessionId: string) => {
         if (!confirm(t('chat.deleteConfirm', 'Delete this session and all its messages? This cannot be undone.'))) return;
-        const tkn = localStorage.getItem('token');
         try {
-            await fetch(`/api/agents/${id}/sessions/${sessionId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tkn}` } });
+            await credFetch(`/api/agents/${id}/sessions/${sessionId}`, { method: 'DELETE', });
             // If deleted the active session, clear it
             if (activeSession?.id === sessionId) {
                 setActiveSession(null);
@@ -850,9 +836,9 @@ function AgentDetailInner() {
                 setHistoryMsgs([]);
             }
             // Refresh session lists
-            const r1 = await fetch(`/api/agents/${id}/sessions?scope=mine`, { headers: { Authorization: `Bearer ${tkn}` } });
+            const r1 = await credFetch(`/api/agents/${id}/sessions?scope=mine`, { });
             if (r1.ok) setSessions(await r1.json());
-            const r2 = await fetch(`/api/agents/${id}/sessions?scope=all`, { headers: { Authorization: `Bearer ${tkn}` } });
+            const r2 = await credFetch(`/api/agents/${id}/sessions?scope=all`, { });
             if (r2.ok) {
                 const all2 = await r2.json();
                 setAllSessions(all2.filter((s: any) => s.source_channel !== 'trigger'));
@@ -867,8 +853,7 @@ function AgentDetailInner() {
         setHistoryMsgs([]);
         setActiveSession(sess);
         // Always load stored messages for the selected session
-        const tkn = localStorage.getItem('token');
-        const res = await fetch(`/api/agents/${id}/sessions/${sess.id}/messages`, { headers: { Authorization: `Bearer ${tkn}` } });
+        const res = await credFetch(`/api/agents/${id}/sessions/${sess.id}/messages`, { });
         if (res.ok) {
             const msgs = await res.json();
             // Agent-to-agent sessions are always read-only
@@ -889,7 +874,6 @@ function AgentDetailInner() {
     };
 
     // Websocket chat state (for 'me' conversation)
-    const token = useAuthStore((s) => s.token);
     const currentUser = useAuthStore((s) => s.user);
     const isAdmin = currentUser?.role === 'platform_admin' || currentUser?.role === 'org_admin';
 
@@ -914,11 +898,10 @@ function AgentDetailInner() {
     const saveExpiry = async (permanent = false) => {
         setExpirySaving(true);
         try {
-            const token = localStorage.getItem('token');
             const body = permanent ? { expires_at: null } : { expires_at: expiryValue ? new Date(expiryValue).toISOString() : null };
-            await fetch(`/api/agents/${id}`, {
+            await credFetch(`/api/agents/${id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
             });
             queryClient.invalidateQueries({ queryKey: ['agent', id] });
@@ -1007,8 +990,8 @@ function AgentDetailInner() {
         // Standard web chat format: [file:name.pdf]\ncontent
         const newFmt = msg.content.match(/^\[file:([^\]]+)\]\n?/);
         if (newFmt) { parsed = { ...msg, fileName: newFmt[1], content: msg.content.slice(newFmt[0].length).trim() }; }
-        // Feishu/Slack channel format: [文件已上传: workspace/uploads/name]
-        const chanFmt = !newFmt && msg.content.match(/^\[\u6587\u4ef6\u5df2\u4e0a\u4f20: (?:workspace\/uploads\/)?([^\]\n]+)\]/);
+        // Legacy Feishu upload tag (Unicode) or English [File uploaded: ...]
+        const chanFmt = !newFmt && msg.content.match(/^\[(?:\u6587\u4ef6\u5df2\u4e0a\u4f20|File uploaded): (?:workspace\/uploads\/)?([^\]\n]+)\]/);
         if (chanFmt) {
             const raw = chanFmt[1]; const fileName = raw.split('/').pop() || raw;
             parsed = { ...msg, fileName, content: msg.content.slice(chanFmt[0].length).trim() };
@@ -1024,7 +1007,7 @@ function AgentDetailInner() {
         if (parsed.fileName && !parsed.imageUrl && id) {
             const ext = parsed.fileName.split('.').pop()?.toLowerCase() || '';
             if (IMAGE_EXTS.includes(ext)) {
-                parsed.imageUrl = `/api/agents/${id}/files/download?path=workspace/uploads/${encodeURIComponent(parsed.fileName)}&token=${token}`;
+                parsed.imageUrl = `/api/agents/${id}/files/download?path=workspace/uploads/${encodeURIComponent(parsed.fileName)}`;
             }
         }
         return parsed;
@@ -1042,7 +1025,7 @@ function AgentDetailInner() {
     }, [id]);
 
     useEffect(() => {
-        if (!id || !token || activeTab !== 'chat') return;
+        if (!id || !currentUser || activeTab !== 'chat') return;
         // Load sessions when entering chat tab; auto-select first and load its history
         fetchMySessions().then((data: any) => {
             setSessionsLoading(false);
@@ -1051,18 +1034,18 @@ function AgentDetailInner() {
     }, [id, activeTab]);
 
     useEffect(() => {
-        if (!id || !token || activeTab !== 'chat') return;
+        if (!id || !currentUser || activeTab !== 'chat') return;
         if (!activeSession) return;  // wait for session to be set
         // Only connect WS for own sessions (not other users' and not agent-to-agent)
         const isAgentSession = activeSession.source_channel === 'agent' || activeSession.participant_type === 'agent';
         if (isAgentSession) return;
         if (activeSession.user_id && currentUser && activeSession.user_id !== String(currentUser.id)) return;
         let cancelled = false;
-        const sessionParam = activeSession?.id ? `&session_id=${activeSession.id}` : '';
+        const sessionParam = activeSession?.id ? `?session_id=${activeSession.id}` : '';
         const connect = () => {
             if (cancelled) return;
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat/${id}?token=${token}${sessionParam}`);
+            const ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat/${id}${sessionParam}`);
             ws.onopen = () => { if (cancelled) { ws.close(); return; } setWsConnected(true); wsRef.current = ws; };
             ws.onclose = (e) => {
                 if (e.code === 4003 || e.code === 4002) {
@@ -1141,7 +1124,7 @@ function AgentDetailInner() {
         };
         connect();
         return () => { cancelled = true; wsRef.current?.close(); wsRef.current = null; setWsConnected(false); };
-    }, [id, token, activeTab, activeSession?.id]);
+    }, [id, currentUser, activeTab, activeSession?.id]);
 
     // Smart scroll: only auto-scroll if user is at the bottom
     const isNearBottom = useRef(true);
@@ -1222,7 +1205,7 @@ function AgentDetailInner() {
                 if (file.imageUrl && supportsVision) {
                     filesPrompt += `[image_data:${file.imageUrl}]\n`;
                 } else if (file.imageUrl) {
-                    filesPrompt += `[图片文件已上传: ${file.name}，保存在 ${file.path || ''}]\n`;
+                    filesPrompt += `[Image uploaded: ${file.name}, saved at ${file.path || ''}]\n`;
                 } else {
                     const wsPath = file.path || '';
                     const codePath = wsPath.replace(/^workspace\//, '');
@@ -1232,7 +1215,7 @@ function AgentDetailInner() {
             });
 
             if (supportsVision && attachedFiles.some(f => f.imageUrl)) {
-                contentForLLM = userMsg ? `${filesPrompt}\n${userMsg}` : `${filesPrompt}\n请分析这些文件`;
+                contentForLLM = userMsg ? `${filesPrompt}\n${userMsg}` : `${filesPrompt}\nPlease analyze these files.`;
             } else {
                 contentForLLM = userMsg ? `${filesPrompt}\nQuestion: ${userMsg}` : `Please analyze these files:\n\n${filesPrompt}`;
             }
@@ -1743,9 +1726,9 @@ function AgentDetailInner() {
                                         </div>
                                         <div className="card" style={{ position: 'relative' }}>
                                             <div className="metric-tooltip-trigger" style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '6px', cursor: 'help', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                                {i18n.language?.startsWith('zh') ? '24h 活动' : '24h Actions'}
+                                                {'24h Actions'}
                                                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="6.5" /><path d="M8 7v4M8 5.5v0" /></svg>
-                                                <span className="metric-tooltip">{i18n.language?.startsWith('zh') ? '过去 24 小时内该 Agent 的所有操作记录，包括对话、工具调用、任务执行等' : 'Total recorded operations in the past 24 hours, including chats, tool calls, task executions, etc.'}</span>
+                                                <span className="metric-tooltip">{'Total recorded operations in the past 24 hours, including chats, tool calls, task executions, etc.'}</span>
                                             </div>
                                             <div style={{ fontSize: '22px', fontWeight: 600 }}>{metrics.activity?.actions_last_24h || 0}</div>
                                         </div>
@@ -1756,12 +1739,12 @@ function AgentDetailInner() {
                                 {(agent as any)?.agent_type === 'openclaw' && (
                                     <div className="card">
                                         <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '6px' }}>
-                                            {i18n.language?.startsWith('zh') ? '最近连接' : 'Last Seen'}
+                                            {'Last Seen'}
                                         </div>
                                         <div style={{ fontSize: '16px', fontWeight: 500 }}>
                                             {(agent as any).openclaw_last_seen
                                                 ? new Date((agent as any).openclaw_last_seen).toLocaleString()
-                                                : (i18n.language?.startsWith('zh') ? '尚未连接' : 'Not connected')}
+                                                : ('Not connected')}
                                         </div>
                                     </div>
                                 )}
@@ -1817,11 +1800,11 @@ function AgentDetailInner() {
                                 ) : (
                                 <div className="card">
                                     <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>
-                                        {i18n.language?.startsWith('zh') ? 'OpenClaw 连接' : 'OpenClaw Connection'}
+                                        {'OpenClaw Connection'}
                                     </h3>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                                            <span style={{ color: 'var(--text-tertiary)' }}>{i18n.language?.startsWith('zh') ? '类型' : 'Type'}</span>
+                                            <span style={{ color: 'var(--text-tertiary)' }}>{'Type'}</span>
                                             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <span style={{
                                                     fontSize: '10px', padding: '2px 6px', borderRadius: '4px',
@@ -1831,15 +1814,15 @@ function AgentDetailInner() {
                                             </span>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                                            <span style={{ color: 'var(--text-tertiary)' }}>{i18n.language?.startsWith('zh') ? '最近连接' : 'Last Seen'}</span>
+                                            <span style={{ color: 'var(--text-tertiary)' }}>{'Last Seen'}</span>
                                             <span>{(agent as any).openclaw_last_seen
                                                 ? new Date((agent as any).openclaw_last_seen).toLocaleString()
-                                                : (i18n.language?.startsWith('zh') ? '尚未连接' : 'Never')}
+                                                : ('Never')}
                                             </span>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                                            <span style={{ color: 'var(--text-tertiary)' }}>{i18n.language?.startsWith('zh') ? '模型' : 'Model'}</span>
-                                            <span style={{ color: 'var(--text-secondary)' }}>{i18n.language?.startsWith('zh') ? '由 OpenClaw 实例管理' : 'Managed by OpenClaw'}</span>
+                                            <span style={{ color: 'var(--text-tertiary)' }}>{'Model'}</span>
+                                            <span style={{ color: 'var(--text-secondary)' }}>{'Managed by OpenClaw'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -2184,7 +2167,7 @@ function AgentDetailInner() {
                                         className="btn btn-ghost"
                                         style={{ width: '100%', fontSize: '12px', color: 'var(--text-tertiary)', padding: '8px', marginTop: '4px' }}
                                     >
-                                        {i18n.language?.startsWith('zh') ? `显示更多 ${hiddenActiveCount} 项...` : `Show ${hiddenActiveCount} more...`}
+                                        {`Show ${hiddenActiveCount} more...`}
                                     </button>
                                 )}
                                 {showAllFocus && activeFocusItems.length > SECTION_PAGE_SIZE && (
@@ -2193,7 +2176,7 @@ function AgentDetailInner() {
                                         className="btn btn-ghost"
                                         style={{ width: '100%', fontSize: '12px', color: 'var(--text-tertiary)', padding: '8px', marginTop: '4px' }}
                                     >
-                                        {i18n.language?.startsWith('zh') ? '收起' : 'Show less'}
+                                        {'Show less'}
                                     </button>
                                 )}
 
@@ -2211,8 +2194,8 @@ function AgentDetailInner() {
                                             }}
                                         >
                                             {showCompletedFocus
-                                                ? (i18n.language?.startsWith('zh') ? '隐藏已完成' : 'Hide completed')
-                                                : (i18n.language?.startsWith('zh') ? `显示 ${completedFocusItems.length} 项已完成` : `Show ${completedFocusItems.length} completed`)
+                                                ? ('Hide completed')
+                                                : (`Show ${completedFocusItems.length} completed`)
                                             }
                                         </button>
                                         {showCompletedFocus && completedFocusItems.map(renderFocusItem)}
@@ -2290,8 +2273,8 @@ function AgentDetailInner() {
                                             style={{ width: '100%', fontSize: '12px', color: 'var(--text-tertiary)', padding: '8px', marginTop: '4px' }}
                                         >
                                             {showAllTriggers
-                                                ? (i18n.language?.startsWith('zh') ? '收起' : 'Show less')
-                                                : (i18n.language?.startsWith('zh') ? `显示更多 ${standaloneTriggers.length - SECTION_PAGE_SIZE} 项...` : `Show ${standaloneTriggers.length - SECTION_PAGE_SIZE} more...`)
+                                                ? ('Show less')
+                                                : (`Show ${standaloneTriggers.length - SECTION_PAGE_SIZE} more...`)
                                             }
                                         </button>
                                     )}
@@ -2341,10 +2324,7 @@ function AgentDetailInner() {
                                                                 setExpandedReflection(session.id);
                                                                 if (!reflectionMessages[session.id]) {
                                                                     try {
-                                                                        const tkn = localStorage.getItem('token');
-                                                                        const res = await fetch(`/api/agents/${id}/sessions/${session.id}/messages`, {
-                                                                            headers: { Authorization: `Bearer ${tkn}` },
-                                                                        });
+                                                                        const res = await credFetch(`/api/agents/${id}/sessions/${session.id}/messages`, {});
                                                                         if (res.ok) {
                                                                             const data = await res.json();
                                                                             setReflectionMessages(prev => ({ ...prev, [session.id]: data }));
@@ -2521,7 +2501,7 @@ function AgentDetailInner() {
                                                     className="btn btn-ghost"
                                                     style={{ fontSize: '12px', padding: '4px 10px', opacity: reflectionPage === 0 ? 0.3 : 1 }}
                                                 >
-                                                    {i18n.language?.startsWith('zh') ? '上一页' : 'Prev'}
+                                                    {'Prev'}
                                                 </button>
                                                 <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
                                                     {reflectionPage + 1} / {totalPages}
@@ -2532,7 +2512,7 @@ function AgentDetailInner() {
                                                     className="btn btn-ghost"
                                                     style={{ fontSize: '12px', padding: '4px 10px', opacity: reflectionPage >= totalPages - 1 ? 0.3 : 1 }}
                                                 >
-                                                    {i18n.language?.startsWith('zh') ? '下一页' : 'Next'}
+                                                    {'Next'}
                                                 </button>
                                             </div>
                                         )}
@@ -2931,8 +2911,8 @@ function AgentDetailInner() {
                                                     <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                         {isOwn && isActive && wsConnected && <span className="status-dot running" style={{ width: '5px', height: '5px', flexShrink: 0 }} />}
                                                         {s.last_message_at
-                                                            ? new Date(s.last_message_at).toLocaleString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-                                                            : new Date(s.created_at).toLocaleString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' })}
+                                                            ? new Date(s.last_message_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                                            : new Date(s.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric' })}
                                                         {s.message_count > 0 && <span style={{ marginLeft: 'auto' }}>{s.message_count}</span>}
                                                     </div>
                                                     <button className="del-btn" onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
@@ -2992,7 +2972,7 @@ function AgentDetailInner() {
                                                             </div>
                                                             <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', display: 'flex', gap: '4px' }}>
                                                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{s.username || ''}</span>
-                                                                <span style={{ flexShrink: 0 }}>{s.last_message_at ? new Date(s.last_message_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}{s.message_count > 0 ? ` · ${s.message_count}` : ''}</span>
+                                                                <span style={{ flexShrink: 0 }}>{s.last_message_at ? new Date(s.last_message_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}{s.message_count > 0 ? ` · ${s.message_count}` : ''}</span>
                                                             </div>
                                                             <button className="del-btn" onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
                                                                 style={{ position: 'absolute', top: '4px', right: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', opacity: 0, fontSize: '14px', color: 'var(--text-tertiary)', lineHeight: 1, transition: 'opacity 0.15s' }}
@@ -3390,7 +3370,7 @@ function AgentDetailInner() {
                                                 task_updated: '✅', file_written: '📝', error: '❌',
                                                 schedule_run: '⏰', heartbeat: '💓', plaza_post: '🏛️',
                                             };
-                                            const time = log.created_at ? new Date(log.created_at).toLocaleString('zh-CN', {
+                                            const time = log.created_at ? new Date(log.created_at).toLocaleString('en-US', {
                                                 month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit',
                                             }) : '';
                                             const isExpanded = expandedLogId === log.id;
@@ -3446,7 +3426,6 @@ function AgentDetailInner() {
                 {
                     activeTab === 'approvals' && (() => {
                         const ApprovalsTab = () => {
-                            const isChinese = i18n.language?.startsWith('zh');
                             const { data: approvals = [], refetch: refetchApprovals } = useQuery({
                                 queryKey: ['agent-approvals', id],
                                 queryFn: () => fetchAuth<any[]>(`/agents/${id}/approvals`),
@@ -3455,10 +3434,9 @@ function AgentDetailInner() {
                             });
                             const resolveMut = useMutation({
                                 mutationFn: async ({ approvalId, action }: { approvalId: string; action: string }) => {
-                                    const token = localStorage.getItem('token');
-                                    return fetch(`/api/agents/${id}/approvals/${approvalId}/resolve`, {
+                                    return credFetch(`/api/agents/${id}/approvals/${approvalId}/resolve`, {
                                         method: 'POST',
-                                        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                                        headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({ action }),
                                     });
                                 },
@@ -3480,7 +3458,7 @@ function AgentDetailInner() {
                                     {pending.length > 0 && (
                                         <>
                                             <h4 style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--warning)' }}>
-                                                {isChinese ? `${pending.length} 个待审批` : `${pending.length} Pending`}
+                                                {`${pending.length} Pending`}
                                             </h4>
                                             {pending.map((a: any) => (
                                                 <div key={a.id} style={{
@@ -3507,7 +3485,7 @@ function AgentDetailInner() {
                                                             onClick={() => resolveMut.mutate({ approvalId: a.id, action: 'approve' })}
                                                             disabled={resolveMut.isPending}
                                                         >
-                                                            {isChinese ? '批准' : 'Approve'}
+                                                            {'Approve'}
                                                         </button>
                                                         <button
                                                             className="btn btn-danger"
@@ -3515,7 +3493,7 @@ function AgentDetailInner() {
                                                             onClick={() => resolveMut.mutate({ approvalId: a.id, action: 'reject' })}
                                                             disabled={resolveMut.isPending}
                                                         >
-                                                            {isChinese ? '拒绝' : 'Reject'}
+                                                            {'Reject'}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -3525,11 +3503,11 @@ function AgentDetailInner() {
                                     )}
                                     {/* History */}
                                     <h4 style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                                        {isChinese ? '审批历史' : 'History'}
+                                        {'History'}
                                     </h4>
                                     {resolved.length === 0 && pending.length === 0 && (
                                         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)', fontSize: '13px' }}>
-                                            {isChinese ? '暂无审批记录' : 'No approval records'}
+                                            {'No approval records'}
                                         </div>
                                     )}
                                     {resolved.map((a: any) => (
@@ -3591,17 +3569,16 @@ function AgentDetailInner() {
                                 // Check if any values were clamped by company policy
                                 const clamped = result?._clamped_fields;
                                 if (clamped && clamped.length > 0) {
-                                    const isCh = i18n.language?.startsWith('zh');
-                                    const fieldNames: Record<string, string> = isCh
-                                        ? { min_poll_interval_min: 'Poll 最短间隔', webhook_rate_limit: 'Webhook 频率限制', heartbeat_interval_minutes: '心跳间隔' }
-                                        : { min_poll_interval_min: 'Min Poll Interval', webhook_rate_limit: 'Webhook Rate Limit', heartbeat_interval_minutes: 'Heartbeat Interval' };
+                                    const fieldNames: Record<string, string> = {
+                                        min_poll_interval_min: 'Min Poll Interval',
+                                        webhook_rate_limit: 'Webhook Rate Limit',
+                                        heartbeat_interval_minutes: 'Heartbeat Interval',
+                                    };
                                     const msgs = clamped.map((c: any) => {
                                         const name = fieldNames[c.field] || c.field;
-                                        return isCh
-                                            ? `${name}: ${c.requested} -> ${c.applied} (公司策略限制)`
-                                            : `${name}: ${c.requested} -> ${c.applied} (company policy)`;
+                                        return `${name}: ${c.requested} -> ${c.applied} (company policy)`;
                                     });
-                                    setSettingsError((isCh ? 'Some values were adjusted:\n' : 'Some values were adjusted:\n') + msgs.join('\n'));
+                                    setSettingsError('Some values were adjusted:\n' + msgs.join('\n'));
                                     setTimeout(() => setSettingsError(''), 5000);
                                 }
 
@@ -3747,19 +3724,16 @@ function AgentDetailInner() {
 
                                 {/* Trigger Limits — native agents only */}
                                 {(agent as any)?.agent_type !== 'openclaw' && (() => {
-                                    const isChinese = i18n.language?.startsWith('zh');
                                     return (
                                         <div className="card" style={{ marginBottom: '12px' }}>
-                                            <h4 style={{ marginBottom: '4px' }}>{isChinese ? '触发器限制' : 'Trigger Limits'}</h4>
+                                            <h4 style={{ marginBottom: '4px' }}>{'Trigger Limits'}</h4>
                                             <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px' }}>
-                                                {isChinese
-                                                    ? '控制该 Agent 可以创建的触发器数量和行为限制'
-                                                    : 'Limit how many triggers this agent can create and their behavior'}
+                                                Limit how many triggers this agent can create and their behavior
                                             </p>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                                                 <div>
                                                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '6px' }}>
-                                                        {isChinese ? '最大触发器数' : 'Max Triggers'}
+                                                        {'Max Triggers'}
                                                     </label>
                                                     <input
                                                         className="input"
@@ -3771,12 +3745,12 @@ function AgentDetailInner() {
                                                         style={{ width: '100%' }}
                                                     />
                                                     <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                                                        {isChinese ? 'Agent 最多可同时拥有的触发器数量' : 'Max active triggers the agent can have'}
+                                                        {'Max active triggers the agent can have'}
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '6px' }}>
-                                                        {isChinese ? 'Poll 最短间隔 (分钟)' : 'Min Poll Interval (min)'}
+                                                        {'Min Poll Interval (min)'}
                                                     </label>
                                                     <input
                                                         className="input"
@@ -3788,12 +3762,12 @@ function AgentDetailInner() {
                                                         style={{ width: '100%' }}
                                                     />
                                                     <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                                                        {isChinese ? '定时轮询外部接口的最短间隔' : 'Minimum interval for polling external URLs'}
+                                                        {'Minimum interval for polling external URLs'}
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '6px' }}>
-                                                        {isChinese ? 'Webhook 频率限制 (次/分钟)' : 'Webhook Rate Limit (/min)'}
+                                                        {'Webhook Rate Limit (/min)'}
                                                     </label>
                                                     <input
                                                         className="input"
@@ -3805,7 +3779,7 @@ function AgentDetailInner() {
                                                         style={{ width: '100%' }}
                                                     />
                                                     <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                                                        {isChinese ? '外部系统每分钟最多可调用的 Webhook 次数' : 'Max webhook calls per minute from external services'}
+                                                        {'Max webhook calls per minute from external services'}
                                                     </div>
                                                 </div>
                                             </div>
@@ -3815,7 +3789,6 @@ function AgentDetailInner() {
 
                                 {/* Welcome Message */}
                                 {(() => {
-                                    const isChinese = i18n.language?.startsWith('zh');
                                     const saveWm = async () => {
                                         try {
                                             await agentApi.update(id!, { welcome_message: wmDraft } as any);
@@ -3827,13 +3800,11 @@ function AgentDetailInner() {
                                     return (
                                         <div className="card" style={{ marginBottom: '12px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                                <h4 style={{ margin: 0 }}>{isChinese ? '欢迎语' : 'Welcome Message'}</h4>
-                                                {wmSaved && <span style={{ fontSize: '12px', color: 'var(--success)' }}>✓ {isChinese ? '已保存' : 'Saved'}</span>}
+                                                <h4 style={{ margin: 0 }}>{'Welcome Message'}</h4>
+                                                {wmSaved && <span style={{ fontSize: '12px', color: 'var(--success)' }}>✓ {'Saved'}</span>}
                                             </div>
                                             <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px' }}>
-                                                {isChinese
-                                                    ? '当用户在网页端发起新对话时，Agent 会自动发送的欢迎语。支持 Markdown 语法。留空则不发送。'
-                                                    : 'Greeting message sent automatically when a user starts a new web conversation. Supports Markdown. Leave empty to disable.'}
+                                                Greeting message sent automatically when a user starts a new web conversation. Supports Markdown. Leave empty to disable.
                                             </p>
                                             <textarea
                                                 className="input"
@@ -3841,7 +3812,7 @@ function AgentDetailInner() {
                                                 value={wmDraft}
                                                 onChange={e => setWmDraft(e.target.value)}
                                                 onBlur={saveWm}
-                                                placeholder={isChinese ? '例如：你好！我是你的 AI 助手，有什么可以帮你的吗？' : "e.g. Hello! I'm your AI assistant. How can I help you?"}
+                                                placeholder={"e.g. Hello! I'm your AI assistant. How can I help you?"}
                                                 style={{
                                                     width: '100%', minHeight: '80px', resize: 'vertical',
                                                     fontFamily: 'inherit', fontSize: '13px',
@@ -4316,7 +4287,7 @@ function AgentDetailInner() {
                                 {(agent as any).is_expired
                                     ? <span style={{ color: 'var(--error)', fontWeight: 600 }}>⏰ {t('agent.settings.expiry.expired')}</span>
                                     : (agent as any).expires_at
-                                        ? <>{t('agent.settings.expiry.currentExpiry')} <strong>{new Date((agent as any).expires_at).toLocaleString(i18n.language === 'zh' ? 'zh-CN' : 'en-US')}</strong></>
+                                        ? <>{t('agent.settings.expiry.currentExpiry')} <strong>{new Date((agent as any).expires_at).toLocaleString('en-US')}</strong></>
                                         : <span style={{ color: 'var(--success)' }}>{t('agent.settings.expiry.neverExpires')}</span>
                                 }
                             </div>

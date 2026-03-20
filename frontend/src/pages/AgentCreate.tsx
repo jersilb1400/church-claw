@@ -166,24 +166,24 @@ export default function AgentCreate() {
         const errors: Record<string, string> = {};
         const name = form.name.trim();
         if (!name) {
-            errors.name = t('wizard.errors.nameRequired', '智能体名称不能为空');
+            errors.name = t('wizard.errors.nameRequired', 'Agent name is required');
         } else if (name.length < 2) {
-            errors.name = t('wizard.errors.nameTooShort', '名称至少需要 2 个字符');
+            errors.name = t('wizard.errors.nameTooShort', 'Name must be at least 2 characters');
         } else if (name.length > 100) {
-            errors.name = t('wizard.errors.nameTooLong', '名称不能超过 100 个字符');
+            errors.name = t('wizard.errors.nameTooLong', 'Name must be at most 100 characters');
         }
         if (form.role_description.length > 500) {
-            errors.role_description = t('wizard.errors.roleDescTooLong', '角色描述不能超过 500 个字符（当前 {{count}} 字符）').replace('{{count}}', String(form.role_description.length));
+            errors.role_description = t('wizard.errors.roleDescTooLong', 'Role description must be at most 500 characters (currently {{count}})').replace('{{count}}', String(form.role_description.length));
         }
         if (form.max_tokens_per_day && (isNaN(Number(form.max_tokens_per_day)) || Number(form.max_tokens_per_day) <= 0)) {
-            errors.max_tokens_per_day = t('wizard.errors.tokenLimitInvalid', '请输入有效的正整数');
+            errors.max_tokens_per_day = t('wizard.errors.tokenLimitInvalid', 'Enter a valid positive integer');
         }
         if (form.max_tokens_per_month && (isNaN(Number(form.max_tokens_per_month)) || Number(form.max_tokens_per_month) <= 0)) {
-            errors.max_tokens_per_month = t('wizard.errors.tokenLimitInvalid', '请输入有效的正整数');
+            errors.max_tokens_per_month = t('wizard.errors.tokenLimitInvalid', 'Enter a valid positive integer');
         }
         const enabledModels = (models as any[]).filter((m: any) => m.enabled);
         if (agentType === 'native' && enabledModels.length > 0 && !form.primary_model_id) {
-            errors.primary_model_id = t('wizard.errors.modelRequired', '请选择一个主模型');
+            errors.primary_model_id = t('wizard.errors.modelRequired', 'Select a primary model');
         }
         setFieldErrors(errors);
         return Object.keys(errors).length === 0;

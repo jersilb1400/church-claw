@@ -28,5 +28,9 @@ ss-nodes.json
 _agent/
 _agents/
 
-# Internal docs
-docs/
+# Internal docs (default ignore; ChurchClaw operator docs are tracked)
+docs/*
+!docs/LOCAL_ONLY.md
+!docs/INSTALL_DOCKER.md
+!docs/ENGLISH_ONLY.md
+!docs/HTTPS_DEPLOYMENT.md

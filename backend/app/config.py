@@ -70,6 +70,8 @@ class Settings(BaseSettings):
     AUTH_COOKIE_SAMESITE: str = "lax"  # lax | strict | none
     AUTH_ACCESS_COOKIE_NAME: str = "churchclaw_access_token"
     AUTH_REFRESH_COOKIE_NAME: str = "churchclaw_refresh_token"
+    # When False, login/register/refresh omit access_token from JSON (HttpOnly cookies only).
+    AUTH_EXPOSE_ACCESS_TOKEN_IN_BODY: bool = False
 
     # File Storage
     AGENT_DATA_DIR: str = _default_agent_data_dir()

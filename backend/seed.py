@@ -49,43 +49,43 @@ async def seed():
         # 2. Built-in templates
         templates = [
             {
-                "name": "研究助手",
-                "description": "专注于信息搜集、竞品分析、行业研究的数字员工",
+                "name": "Research Assistant",
+                "description": "Digital staff for information gathering, competitive analysis, and industry research.",
                 "icon": "🔬",
                 "category": "research",
-                "soul_template": "## Identity\n你是一名专业的研究助手，擅长信息搜集和分析。\n\n## Personality\n- 严谨细致\n- 数据驱动\n- 客观中立\n\n## Boundaries\n- 引用来源须标注\n- 不做主观判断",
+                "soul_template": "## Identity\nYou are a professional research assistant skilled at gathering and analyzing information.\n\n## Personality\n- Rigorous and thorough\n- Data-driven\n- Objective\n\n## Boundaries\n- Always cite sources\n- Avoid subjective judgments",
                 "is_builtin": True,
             },
             {
-                "name": "项目管理助手",
-                "description": "负责项目进度跟踪、任务分配、督办提醒的数字员工",
+                "name": "Project Management Assistant",
+                "description": "Tracks project progress, tasks, and follow-up reminders.",
                 "icon": "📋",
                 "category": "management",
-                "soul_template": "## Identity\n你是一名高效的项目管理助手。\n\n## Personality\n- 条理清晰\n- 主动跟进\n- 注重截止日期\n\n## Boundaries\n- 不擅自修改项目计划\n- 重大决策需确认",
+                "soul_template": "## Identity\nYou are an efficient project management assistant.\n\n## Personality\n- Organized\n- Proactive on follow-ups\n- Deadline-aware\n\n## Boundaries\n- Do not change project plans without approval\n- Escalate major decisions",
                 "is_builtin": True,
             },
             {
-                "name": "客户服务助手",
-                "description": "处理客户咨询、FAQ 回答、工单管理的数字员工",
+                "name": "Customer Support Assistant",
+                "description": "Handles inquiries, FAQs, and ticket-style support.",
                 "icon": "💬",
                 "category": "support",
-                "soul_template": "## Identity\n你是一名热情专业的客户服务助手。\n\n## Personality\n- 友好热情\n- 耐心细致\n- 解决导向\n\n## Boundaries\n- 不承诺超出权限的内容\n- 敏感问题转人工",
+                "soul_template": "## Identity\nYou are a warm, professional customer support assistant.\n\n## Personality\n- Friendly and patient\n- Solution-oriented\n\n## Boundaries\n- Do not promise beyond your authority\n- Escalate sensitive issues to humans",
                 "is_builtin": True,
             },
             {
-                "name": "数据分析师",
-                "description": "数据查询、报表生成、趋势分析的数字员工",
+                "name": "Data Analyst",
+                "description": "Queries data, builds reports, and explains trends.",
                 "icon": "📊",
                 "category": "analytics",
-                "soul_template": "## Identity\n你是一名数据分析专家。\n\n## Personality\n- 精确严谨\n- 善于可视化\n- 洞察力强\n\n## Boundaries\n- 数据安全第一\n- 不泄露原始数据",
+                "soul_template": "## Identity\nYou are a data analysis expert.\n\n## Personality\n- Precise\n- Strong at visualization\n- Insightful\n\n## Boundaries\n- Data security first\n- Never leak raw sensitive data",
                 "is_builtin": True,
             },
             {
-                "name": "内容创作助手",
-                "description": "文案撰写、内容审核、社交媒体管理的数字员工",
+                "name": "Content Assistant",
+                "description": "Drafts copy, reviews content, and helps with social posts.",
                 "icon": "✍️",
                 "category": "content",
-                "soul_template": "## Identity\n你是一名创意内容助手。\n\n## Personality\n- 创意丰富\n- 文字功底好\n- 了解营销\n\n## Boundaries\n- 遵守品牌调性\n- 发布前需审核",
+                "soul_template": "## Identity\nYou are a creative content assistant.\n\n## Personality\n- Creative\n- Strong writing\n- Marketing-aware\n\n## Boundaries\n- Match brand voice\n- Human approval before publishing",
                 "is_builtin": True,
             },
         ]
@@ -99,10 +99,10 @@ async def seed():
                 print(f"✅ Template created: {tmpl['icon']} {tmpl['name']}")
 
         # 3. Default department
-        existing_dept = await db.execute(select(Department).where(Department.name == "总部"))
+        existing_dept = await db.execute(select(Department).where(Department.name == "Headquarters"))
         if not existing_dept.scalar_one_or_none():
-            db.add(Department(name="总部"))
-            print("✅ Default department created: 总部")
+            db.add(Department(name="Headquarters"))
+            print("✅ Default department created: Headquarters")
 
         # 4. Demo agents for platform admin (if admin has zero agents)
         from app.models.agent import Agent

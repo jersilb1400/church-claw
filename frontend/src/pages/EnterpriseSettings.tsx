@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { credFetch } from '../utils/credFetch';
 import { enterpriseApi, skillApi } from '../services/api';
 import PromptModal from '../components/PromptModal';
 import FileBrowser from '../components/FileBrowser';
@@ -11,12 +12,11 @@ import InvitationCodes from './InvitationCodes';
 
 // API helpers for enterprise endpoints
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`/api${url}`, {
+    const res = await credFetch(`/api${url}`, {
         ...options,
         headers: {
             'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(options?.headers as Record<string, string>),
         },
     });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || 'Error');
@@ -1075,18 +1075,16 @@ export default function EnterpriseSettings() {
     const [jinaKeyMasked, setJinaKeyMasked] = useState('');  // stored key from DB
     useEffect(() => {
         if (activeTab !== 'tools') return;
-        const token = localStorage.getItem('token');
-        fetch('/api/enterprise/system-settings/jina_api_key', { headers: { Authorization: `Bearer ${token}` } })
+        credFetch('/api/enterprise/system-settings/jina_api_key', {})
             .then(r => r.json())
             .then(d => { if (d.value?.api_key) setJinaKeyMasked(d.value.api_key.slice(0, 8) + '••••••••'); })
             .catch(() => { });
     }, [activeTab]);
     const saveJinaKey = async () => {
         setJinaKeySaving(true);
-        const token = localStorage.getItem('token');
-        await fetch('/api/enterprise/system-settings/jina_api_key', {
+        await credFetch('/api/enterprise/system-settings/jina_api_key', {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: { api_key: jinaKey } }),
         });
         setJinaKeyMasked(jinaKey.slice(0, 8) + '••••••••');
@@ -1096,10 +1094,9 @@ export default function EnterpriseSettings() {
         setTimeout(() => setJinaKeySaved(false), 2000);
     };
     const clearJinaKey = async () => {
-        const token = localStorage.getItem('token');
-        await fetch('/api/enterprise/system-settings/jina_api_key', {
+        await credFetch('/api/enterprise/system-settings/jina_api_key', {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: {} }),
         });
         setJinaKeyMasked('');
@@ -1139,9 +1136,9 @@ export default function EnterpriseSettings() {
     const deleteModel = useMutation({
         mutationFn: async ({ id, force = false }: { id: string; force?: boolean }) => {
             const url = force ? `/enterprise/llm-models/${id}?force=true` : `/enterprise/llm-models/${id}`;
-            const res = await fetch(`/api${url}`, {
+            const res = await credFetch(`/api${url}`, {
                 method: 'DELETE',
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                headers: {},
             });
             if (res.status === 409) {
                 const data = await res.json();
@@ -1149,9 +1146,9 @@ export default function EnterpriseSettings() {
                 const msg = `This model is used by ${agents.length} agent(s):\n\n${agents.join(', ')}\n\nDelete anyway? (their model config will be cleared)`;
                 if (confirm(msg)) {
                     // Retry with force
-                    const r2 = await fetch(`/api/enterprise/llm-models/${id}?force=true`, {
+                    const r2 = await credFetch(`/api/enterprise/llm-models/${id}?force=true`, {
                         method: 'DELETE',
-                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                        headers: {},
                     });
                     if (!r2.ok && r2.status !== 204) throw new Error('Delete failed');
                 }
@@ -1291,12 +1288,11 @@ export default function EnterpriseSettings() {
                                         const origText = btn?.textContent || '';
                                         if (btn) btn.textContent = 'Testing...';
                                         try {
-                                            const token = localStorage.getItem('token');
                                             const testData: any = { provider: modelForm.provider, model: modelForm.model, base_url: modelForm.base_url || undefined };
                                             if (modelForm.api_key) testData.api_key = modelForm.api_key;
-                                            const res = await fetch('/api/enterprise/llm-test', {
+                                            const res = await credFetch('/api/enterprise/llm-test', {
                                                 method: 'POST',
-                                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                                headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify(testData),
                                             });
                                             const result = await res.json();
@@ -1380,13 +1376,12 @@ export default function EnterpriseSettings() {
                                                     const origText = btn?.textContent || '';
                                                     if (btn) btn.textContent = 'Testing...';
                                                     try {
-                                                        const token = localStorage.getItem('token');
                                                         const testData: any = { provider: modelForm.provider, model: modelForm.model, base_url: modelForm.base_url || undefined };
                                                         if (modelForm.api_key) testData.api_key = modelForm.api_key;
                                                         testData.model_id = editingModelId;
-                                                        const res = await fetch('/api/enterprise/llm-test', {
+                                                        const res = await credFetch('/api/enterprise/llm-test', {
                                                             method: 'POST',
-                                                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                                            headers: { 'Content-Type': 'application/json' },
                                                             body: JSON.stringify(testData),
                                                         });
                                                         const result = await res.json();
@@ -1906,8 +1901,7 @@ export default function EnterpriseSettings() {
                                                                 // Pre-load jina api_key from system_settings
                                                                 if (tool.name === 'jina_search' || tool.name === 'jina_read') {
                                                                     try {
-                                                                        const token = localStorage.getItem('token');
-                                                                        const res = await fetch('/api/enterprise/system-settings/jina_api_key', { headers: { Authorization: `Bearer ${token}` } });
+                                                                        const res = await credFetch('/api/enterprise/system-settings/jina_api_key', {});
                                                                         const d = await res.json();
                                                                         if (d.value?.api_key) cfg.api_key = d.value.api_key;
                                                                     } catch { }
@@ -1975,10 +1969,9 @@ export default function EnterpriseSettings() {
                                                                 if (tool.name === 'jina_search' || tool.name === 'jina_read') {
                                                                     // Save api_key to system_settings (shared by both jina tools)
                                                                     if (editingConfig.api_key) {
-                                                                        const token = localStorage.getItem('token');
-                                                                        await fetch('/api/enterprise/system-settings/jina_api_key', {
+                                                                        await credFetch('/api/enterprise/system-settings/jina_api_key', {
                                                                             method: 'PUT',
-                                                                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                                                            headers: { 'Content-Type': 'application/json' },
                                                                             body: JSON.stringify({ value: { api_key: editingConfig.api_key } }),
                                                                         });
                                                                     }

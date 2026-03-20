@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import get_settings
 from app.core.security import decode_access_token
 from app.core.permissions import check_agent_access, is_agent_expired
 from app.database import async_session
@@ -18,6 +19,7 @@ from app.models.llm import LLMModel
 from app.models.user import User
 
 router = APIRouter(tags=["websocket"])
+_settings = get_settings()
 
 
 class ConnectionManager:
@@ -201,7 +203,7 @@ async def call_llm(
                 _n_imgs = len(_re_strip.findall(_img_pattern, msg.content))
                 cleaned = _re_strip.sub(_img_pattern, '', msg.content).strip()
                 if _n_imgs > 0:
-                    cleaned += f"\n[用户发送了 {_n_imgs} 张图片，但当前模型不支持视觉，无法查看图片内容]"
+                    cleaned += f"\n[User sent {_n_imgs} image(s), but this model does not support vision and cannot view image content]"
                 api_messages[i] = LLMMessage(
                     role=msg.role,
                     content=cleaned,
@@ -236,15 +238,15 @@ async def call_llm(
             api_messages.append(LLMMessage(
                 role="system",
                 content=(
-                    f"⚠️ 你已使用 {round_i}/{_max_tool_rounds} 轮工具调用。"
-                    "如果当前任务尚未完成，请尽快保存进度到 focus.md，"
-                    "并使用 set_trigger 设置续接触发器，在剩余轮次中做好收尾。"
+                    f"⚠️ You have used {round_i}/{_max_tool_rounds} tool-calling rounds."
+                    " If the task is not done, save progress to focus.md soon,"
+                    " and use set_trigger to schedule follow-up work for the remaining rounds."
                 ),
             ))
         elif round_i == _warn_threshold_96:
             api_messages.append(LLMMessage(
                 role="system",
-                content=f"🚨 仅剩 2 轮工具调用。请立即保存进度到 focus.md 并设置续接触发器。",
+                content="🚨 Only 2 tool-calling rounds left. Save progress to focus.md now and set follow-up triggers.",
             ))
 
         try:
@@ -384,13 +386,13 @@ async def call_llm(
 async def websocket_chat(
     websocket: WebSocket,
     agent_id: uuid.UUID,
-    token: str = Query(...),
+    token: str | None = Query(None),
     session_id: str = Query(None),
 ):
     """WebSocket endpoint for real-time chat with an agent.
 
     Flow:
-    1. Client connects with JWT token + optional session_id as query params
+    1. Client connects with JWT (query ?token=...) and/or HttpOnly access cookie + optional session_id
     2. Server accepts immediately so browser onopen fires quickly
     3. Server authenticates and checks agent access
     4. If session_id provided, uses it; otherwise finds/creates the user's latest session
@@ -401,9 +403,14 @@ async def websocket_chat(
     # Accept immediately so browser sees onopen without waiting for DB setup
     await websocket.accept()
 
-    # Authenticate
+    # Authenticate (Bearer-in-query for legacy clients; browsers use HttpOnly cookie on same origin)
+    jwt_token = token or websocket.cookies.get(_settings.AUTH_ACCESS_COOKIE_NAME)
+    if not jwt_token:
+        await websocket.send_json({"type": "error", "content": "Authentication required"})
+        await websocket.close(code=4001)
+        return
     try:
-        payload = decode_access_token(token)
+        payload = decode_access_token(jwt_token)
         user_id = uuid.UUID(payload["sub"])
     except Exception:
         await websocket.send_json({"type": "error", "content": "Authentication failed"})
@@ -638,7 +645,12 @@ async def websocket_chat(
                         # Use display_content for title (avoids raw base64/markers)
                         title_src = display_content if display_content else content
                         # Clean up common prefixes from image/file messages
-                        clean_title = title_src.replace("[图片] ", "📷 ").replace("[image_data:", "").strip()
+                        clean_title = (
+                            title_src.replace("[\u56fe\u7247] ", "📷 ")
+                            .replace("[Image] ", "📷 ")
+                            .replace("[image_data:", "")
+                            .strip()
+                        )
                         if file_name and not clean_title:
                             clean_title = f"📎 {file_name}"
                         _sess.title = clean_title[:40] if clean_title else content[:40]
@@ -669,7 +681,7 @@ async def websocket_chat(
             # Detect task creation intent
             import re
             task_match = re.search(
-                r'(?:创建|新建|添加|建一个|帮我建|create|add)(?:一个|a )?(?:任务|待办|todo|task)[，,：：:\\s]*(.+)',
+                r'(?:create|add)(?:\s+a\s+)?(?:task|todo)[,:\s]+(.+)',
                 content, re.IGNORECASE
             )
 

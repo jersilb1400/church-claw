@@ -5,34 +5,28 @@ import type { User, Agent } from '../types';
 
 interface AuthStore {
     user: User | null;
-    token: string | null;
-    setAuth: (user: User, token?: string | null) => void;
-    setUser: (user: User) => void;
-    logout: () => void;
+    setUser: (user: User | null) => void;
+    logout: () => Promise<void>;
     isAuthenticated: () => boolean;
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
     user: null,
-    token: localStorage.getItem('token'),
 
-    setAuth: (user, token) => {
-        if (token) {
-            localStorage.setItem('token', token);
+    setUser: (user) => set({ user }),
+
+    logout: async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        } catch {
+            /* ignore network errors */
         }
-        set({ user, token: token ?? get().token });
-    },
-
-    setUser: (user) => {
-        set({ user });
-    },
-
-    logout: () => {
         localStorage.removeItem('token');
-        set({ user: null, token: null });
+        localStorage.removeItem('user');
+        set({ user: null });
     },
 
-    isAuthenticated: () => !!get().token || !!get().user,
+    isAuthenticated: () => !!get().user,
 }));
 
 interface AppStore {

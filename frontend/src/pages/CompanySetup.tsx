@@ -5,9 +5,9 @@ import { useAuthStore } from '../stores';
 import { tenantApi, authApi } from '../services/api';
 
 export default function CompanySetup() {
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
     const navigate = useNavigate();
-    const { user, setAuth } = useAuthStore();
+    const { user, setUser } = useAuthStore();
     const [allowCreate, setAllowCreate] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -34,8 +34,7 @@ export default function CompanySetup() {
     const refreshUser = async () => {
         try {
             const me = await authApi.me();
-            const token = useAuthStore.getState().token;
-            if (token) setAuth(me, token);
+            setUser(me);
         } catch { /* ignore */ }
     };
 
@@ -70,24 +69,8 @@ export default function CompanySetup() {
         }
     };
 
-    const toggleLang = () => {
-        i18n.changeLanguage(i18n.language === 'zh' ? 'en' : 'zh');
-    };
-
     return (
         <div className="company-setup-page">
-            {/* Language Switcher */}
-            <div style={{
-                position: 'absolute', top: '16px', right: '16px',
-                cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)',
-                display: 'flex', alignItems: 'center', gap: '4px',
-                padding: '6px 12px', borderRadius: '8px',
-                background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)',
-                zIndex: 101,
-            }} onClick={toggleLang}>
-                🌐
-            </div>
-
             <div className="company-setup-container">
                 <div className="company-setup-header">
                     <img src="/logo-black.png" alt="" style={{ width: 32, height: 32 }} />

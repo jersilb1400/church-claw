@@ -299,8 +299,8 @@ BUILTIN_TOOLS = [
                     "type": "select",
                     "options": [
                         {"value": "en", "label": "English"},
-                        {"value": "zh-CN", "label": "中文"},
-                        {"value": "ja", "label": "日本語"},
+                        {"value": "zh-CN", "label": "Chinese (Simplified)"},
+                        {"value": "ja", "label": "Japanese"},
                     ],
                     "default": "en",
                 },

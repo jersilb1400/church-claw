@@ -102,7 +102,12 @@ async def get_registration_config(db: AsyncSession = Depends(get_db)):
     return {"invitation_code_required": enabled}
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    response_model_exclude_none=True,
+    status_code=status.HTTP_201_CREATED,
+)
 async def register(data: UserRegister, request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     """Register a new user account.
 
@@ -181,13 +186,13 @@ async def register(data: UserRegister, request: Request, response: Response, db:
     access_token, refresh_token = await _issue_tokens_and_session(db, user, request)
     _set_auth_cookies(response, access_token, refresh_token)
     return TokenResponse(
-        access_token=access_token,
+        access_token=access_token if settings.AUTH_EXPOSE_ACCESS_TOKEN_IN_BODY else None,
         user=UserOut.model_validate(user),
         needs_company_setup=needs_setup,
     )
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, response_model_exclude_none=True)
 async def login(data: UserLogin, request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     """Login with username and password."""
     result = await db.execute(select(User).where(User.username == data.username))
@@ -214,13 +219,13 @@ async def login(data: UserLogin, request: Request, response: Response, db: Async
     access_token, refresh_token = await _issue_tokens_and_session(db, user, request)
     _set_auth_cookies(response, access_token, refresh_token)
     return TokenResponse(
-        access_token=access_token,
+        access_token=access_token if settings.AUTH_EXPOSE_ACCESS_TOKEN_IN_BODY else None,
         user=UserOut.model_validate(user),
         needs_company_setup=needs_setup,
     )
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh", response_model=TokenResponse, response_model_exclude_none=True)
 async def refresh_session(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     """Rotate refresh token and issue a fresh access token."""
     refresh_token = request.cookies.get(settings.AUTH_REFRESH_COOKIE_NAME)
@@ -275,7 +280,7 @@ async def refresh_session(request: Request, response: Response, db: AsyncSession
     new_access_token = create_access_token(str(user.id), user.role)
     _set_auth_cookies(response, new_access_token, new_refresh_token)
     return TokenResponse(
-        access_token=new_access_token,
+        access_token=new_access_token if settings.AUTH_EXPOSE_ACCESS_TOKEN_IN_BODY else None,
         user=UserOut.model_validate(user),
         needs_company_setup=user.tenant_id is None,
     )
