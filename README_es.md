@@ -61,7 +61,7 @@ Cada agente tiene `soul.md` (personalidad), `memory.md` (memoria a largo plazo),
 
 ### Requisitos
 - Python 3.12+
-- Node.js 20+
+- Node.js 22.23.4+
 - PostgreSQL 15+ (o SQLite para pruebas rápidas)
 - CPU de 2 núcleos / 4 GB RAM / 30 GB disco (mínimo)
 - Acceso de red a endpoints de API LLM

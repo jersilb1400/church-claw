@@ -4,7 +4,8 @@ FROM python:3.12-slim AS deps
 
 WORKDIR /app
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc libpq-dev && \
+    apt-get install -y --no-install-recommends gcc libpq-dev ca-certificates && \
+    update-ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
@@ -16,14 +17,16 @@ RUN if [ -n "$CLAWITH_PIP_INDEX_URL" ] && [ -n "$CLAWITH_PIP_TRUSTED_HOST" ]; th
         pip install --no-cache-dir --index-url "$CLAWITH_PIP_INDEX_URL" .; \
     else \
         pip install --no-cache-dir .; \
-    fi
+    fi && \
+    pip install --no-cache-dir --upgrade "certifi>=2026.10.19"
 
 # ─── Production ─────────────────────────────────────────
 FROM python:3.12-slim AS production
 
 WORKDIR /app
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libpq5 curl shadowsocks-libev gosu && \
+    apt-get install -y --no-install-recommends libpq5 curl shadowsocks-libev gosu ca-certificates && \
+    update-ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from deps stage

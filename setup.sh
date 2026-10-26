@@ -393,7 +393,7 @@ cd "$ROOT/frontend"
 if [ ! -d "node_modules" ]; then
     if ! command -v npm &>/dev/null; then
         echo -e "  ${YELLOW}⚠${NC}  npm not found. Skipping frontend dependency install."
-        echo -e "  ${YELLOW}⚠${NC}  Install Node.js 20+ to enable frontend dev server."
+        echo -e "  ${YELLOW}⚠${NC}  Install Node.js 22.23.4+ to enable frontend dev server."
         echo -e "  ${YELLOW}⚠${NC}  You can still use pre-built dist/ or Docker for frontend."
     else
         echo "  Installing npm packages..."

@@ -61,7 +61,7 @@ Clawith のエージェントは**組織のデジタル社員**です。組織�
 
 ### 動作環境
 - Python 3.12+
-- Node.js 20+
+- Node.js 22.23.4+
 - PostgreSQL 15+（クイックテストには SQLite も可）
 - 2コア CPU / 4 GB メモリ / 30 GB ディスク（最小構成）
 - LLM API へのネットワークアクセス
