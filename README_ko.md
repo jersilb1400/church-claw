@@ -61,7 +61,7 @@ Clawith 에이전트는 **조직의 디지털 직원**입니다. 전체 조직�
 
 ### 요구 사항
 - Python 3.12+
-- Node.js 20+
+- Node.js 22.23.4+
 - PostgreSQL 15+ (빠른 테스트에는 SQLite 사용 가능)
 - 2코어 CPU / 4 GB 메모리 / 30 GB 디스크 (최소)
 - LLM API 네트워크 접근

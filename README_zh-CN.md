@@ -61,7 +61,7 @@ Agent 可以在运行时**发现并安装新工具**（[Smithery](https://smithe
 
 ### 环境要求
 - Python 3.12+
-- Node.js 20+
+- Node.js 22.23.4+
 - PostgreSQL 15+（或 SQLite 快速测试）
 - 2 核 CPU / 4 GB 内存 / 30 GB 磁盘（最低配置）
 - 可访问 LLM API
